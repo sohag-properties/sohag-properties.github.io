@@ -2492,13 +2492,13 @@
       cloudFlushing = true;
       cloudFlushAgain = false;
       try {
-        for (const key of cloudDirtyGet()) {
+        await Promise.all(cloudDirtyGet().map(async (key) => {
           try { await cloudFlushKey(key); }
           catch (e) {
             console.warn('cloud push failed, will retry', key, e);
             if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('تعذّر الرفع للسحابة حاليًا، هيعيد المحاولة تلقائيًا'); } catch (_) {} }
           }
-        }
+        }));
       } finally { cloudFlushing = false; }
       if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
     }
