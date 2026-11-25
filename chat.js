@@ -61,7 +61,7 @@
   /* ===== أدوات اللغة العربية ===== */
   function norm(s) {
     s = String(s || '').toLowerCase();
-    s = s.replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+    s = s.replace(/[ً-ٰٟـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
     s = s.replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }).replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); });
     return s;
   }
@@ -74,6 +74,7 @@
     ['factories', 'المصانع والمخازن', /مصنع|مصانع|مخزن|مخازن/]
   ];
   function detectCat(t) { for (var i = 0; i < CATS.length; i++) if (CATS[i][2].test(t)) return CATS[i]; return null; }
+  function catLabel(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === id) return CATS[i][1]; return null; }
   function parseBudget(t) {
     var m = t.match(/(\d+(?:[.,]\d+)?)\s*(مليون|م\b|الف|الاف|k)/);
     if (m) { var n = parseFloat(m[1].replace(',', '.')); return /مليون|^م$/.test(m[2]) ? n * 1e6 : n * 1e3; }
@@ -145,6 +146,38 @@
   try { state.msgs = JSON.parse(lget('sohag_chat_msgs', '[]')) || []; } catch (_) { state.msgs = []; }
   state.reqSent = lget('sohag_chat_reqsent', '') === '1';
   state.haveContact = lget('sohag_chat_contact', '') === '1';
+
+  /* ===== ذاكرة الجلسة: اللي البوت عرفه عن الزائر وميسألش فيه تاني ===== */
+  var known = { name: null, phone: null, need: null, needLabel: null, budget: null, area: null, loc: null, interest: null, claimed: false };
+  try {
+    var _k = JSON.parse(lget('sohag_chat_known', '{}')) || {};
+    for (var _kk in known) if (_k[_kk] != null) known[_kk] = _k[_kk];
+  } catch (_) {}
+  function saveKnown() { lset('sohag_chat_known', JSON.stringify(known)); }
+  function hasContext() {
+    return !!(known.name || known.phone || known.need || known.budget || known.area || known.interest || known.claimed || state.haveContact || state.reqSent);
+  }
+  /* يسأل بس عن اللي لسه ناقص، مش عن حاجة يعرفها */
+  function askMissing() {
+    var parts = [];
+    if (!known.need) parts.push('إنت محتاج إيه بالظبط (أرض، شقة، كمبوند، فيلا، محل)');
+    if (!known.budget) parts.push('ميزانيتك تقريباً كام');
+    if (parts.length) return 'قولي ' + parts.join(' و') + ' وأنا أدورلك.';
+    if (!state.haveContact) return 'ابعتلي اسمك ورقم موبايلك علشان فريق الأستاذ محمد يتواصل معاك.';
+    return 'أقدر أساعدك في حاجة تانية؟';
+  }
+  function detectName(raw) {
+    var m = String(raw).match(/(?:اسمي|اسمى|انا|أنا)\s+([^\d،,.]{2,30}?)(?=\s+(?:و|رقم)|\s*[،,.\d]|$)/);
+    if (m) { var n = m[1].trim(); if (n && !/^(مش|مهتم|عايز|عاوز|محتاج|بدور|ساكن|كنت|عندي|جاي|كلمت|بكلم)/.test(norm(n))) return n; }
+    return null;
+  }
+  var HOLD = 'لحظة واحدة يا فندم، حد من فريق الأستاذ محمد هيرد عليك هنا في الشات في أقرب وقت 🙏';
+  /* العميل بيقول إن بياناته مسجلة عندنا */
+  var REGD = /(مسجل|مسجله|مسجلين|متسجل|موجود عندك|موجودين عندك|بياناتي|اتعاملت معاكم|كلمتكم قبل|اتصلت بيكم|اشتريت منكم|حجزت معاكم|عندك رقمي|رقمي عندك)/;
+  function regdClaim(t) {
+    return REGD.test(t) && /(رقم|اسم|بيانات|مسجل|متسجل|معاكم|بيكم|منكم|عندك|عندكم)/.test(t) && !detectCat(t) && !parsePhone(t);
+  }
+
   var el = {};
   function saveMsgs() { lset('sohag_chat_msgs', JSON.stringify(state.msgs.slice(-80))); }
   function mk(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -201,7 +234,7 @@
     var phone = parsePhone(text);
     var reply = respond(text, phone, forceAgent);
     rpc('chat_send', { p_session: sessionId, p_sender: 'visitor', p_body: text, p_needs_agent: !!reply.needsAgent });
-    if (phone) { state.haveContact = true; lset('sohag_chat_contact', '1'); rpc('request_contact', { p_session: sessionId, p_name: reply.name || null, p_phone: phone }); }
+    if (phone) { state.haveContact = true; lset('sohag_chat_contact', '1'); rpc('request_contact', { p_session: sessionId, p_name: reply.name || known.name || null, p_phone: phone }); }
     setTimeout(function () {
       (reply.cards || []).forEach(function (c) { addMsg({ t: 'card', d: c }); });
       if (reply.text) botSay(reply.text);
@@ -219,78 +252,131 @@
     var done = state.haveContact;
     var closing = 'العفو يا فندم 🌹 فريق الأستاذ محمد هيتواصل معاك قريب على رقمك. ولو احتجت أي حاجة تانية أنا موجود.';
     var nocontact = 'العفو يا فندم 🌹 لو حابب فريقنا يتواصل معاك ابعتلي اسمك ورقم موبايلك، وأي وقت تحتاج عقار تاني قولي.';
-    if (/^(شكرا|شكرا ليك|شكرا جزيلا|الف شكر|الف شكرا|متشكر|متشكره|مشكور|تسلم|تسلمي|تسلم ايدك|يسلمو|يسلموا|ميرسي|thanks|thank you|thx)( .*)?$/.test(c) && c.split(' ').length <= 5) return done ? closing : (state.reqSent ? nocontact : 'العفو يا فندم 🌹 أنا في خدمتك. قولي إنت محتاج إيه (أرض، شقة، كمبوند، محل) وميزانيتك كام وأنا أدورلك.');
+    if (/^(شكرا|شكرا ليك|شكرا جزيلا|الف شكر|الف شكرا|متشكر|متشكره|مشكور|تسلم|تسلمي|تسلم ايدك|يسلمو|يسلموا|ميرسي|thanks|thank you|thx)( .*)?$/.test(c) && c.split(' ').length <= 5) return done ? closing : (state.reqSent ? nocontact : 'العفو يا فندم 🌹 أنا في خدمتك. ' + askMissing());
     if (/^(مع السلامه|باي|bye|في امان الله|الي اللقاء|تصبح علي خير|سلام|سلامو عليكو|سلام عليكم ورحمه الله|مع السلامه يا فندم)$/.test(c)) {
-      if (c === 'سلام' && !done) return 'أهلاً بيك! إنت محتاج إيه بالظبط؟ (أرض، شقة، كمبوند، فيلا، محل) وميزانيتك تقريباً كام؟';
+      if (c === 'سلام' && !done) return 'أهلاً بيك! ' + askMissing();
       return done ? 'مع السلامة يا فندم 🌹 فريق الأستاذ محمد هيتواصل معاك قريب.' : 'مع السلامة يا فندم 🌹 أي وقت تحتاج عقار ابقى كلمني هنا.';
     }
     if (/^(ازيك|ازيكم|اهلا|اهلا بيك|اهلا وسهلا|اهلا بحضرتك|هلا|مرحبا|مرحبتين|هاي|هلو|hello|hi|صباح الخير|صباح النور|مساء الخير|مساء النور|السلام عليكم|السلام عليكم ورحمه الله|السلام عليكم ورحمه الله وبركاته|وعليكم السلام|وعليكم السلام ورحمه الله|ازيك عامل ايه|عامل ايه|اخبارك ايه|اخبارك)$/.test(c)) {
-      if (/^(صباح الخير|صباح النور)$/.test(c)) return 'صباح النور يا فندم ☀️ ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : 'إنت محتاج إيه (أرض، شقة، كمبوند، محل) وميزانيتك تقريباً كام؟');
-      if (/^(مساء الخير|مساء النور)$/.test(c)) return 'مساء النور يا فندم 🌙 ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : 'إنت محتاج إيه (أرض، شقة، كمبوند، محل) وميزانيتك تقريباً كام؟');
-      if (/ازيك|عامل ايه|اخبار/.test(c)) return 'الحمد لله تمام، تسلم 🌹 ' + (done ? 'أقدر أساعدك في حاجة؟' : 'إنت محتاج إيه (أرض، شقة، كمبوند، محل) وميزانيتك تقريباً كام؟');
-      return 'أهلاً بيك يا فندم 👋 ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : 'إنت محتاج إيه (أرض، شقة، كمبوند، محل) وميزانيتك تقريباً كام؟');
+      if (/^(صباح الخير|صباح النور)$/.test(c)) return 'صباح النور يا فندم ☀️ ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : askMissing());
+      if (/^(مساء الخير|مساء النور)$/.test(c)) return 'مساء النور يا فندم 🌙 ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : askMissing());
+      if (/ازيك|عامل ايه|اخبار/.test(c)) return 'الحمد لله تمام، تسلم 🌹 ' + (done ? 'أقدر أساعدك في حاجة؟' : askMissing());
+      return 'أهلاً بيك يا فندم 👋 ' + (done ? 'أقدر أساعدك في حاجة تانية؟' : askMissing());
     }
-    if (/^(تمام|تمام كده|تمام الحمد لله|ماشي|ماشي كده|اوكي|اوكيه|اوك|اوكي تمام|ok|okay|حاضر|طيب|حلو|جميل|كويس|ممتاز|الحمد لله)$/.test(c)) return done ? 'تمام يا فندم 👌 فريق الأستاذ محمد هيتواصل معاك قريب.' : (state.reqSent ? 'تمام يا فندم 👌 ابعتلي اسمك ورقم موبايلك علشان فريقنا يتواصل معاك.' : 'تمام يا فندم 👌 قولي إنت محتاج إيه وأنا أدورلك.');
-    if (/^(ايوه|ايوا|ايوه يا فندم|اه|ااه|اها|ايو|ايوة|نعم|اجل|اكيد|طبعا|يب|ايه ده|اه طبعا)$/.test(c)) return done ? 'تمام يا فندم 👌 فريق الأستاذ محمد هيتواصل معاك قريب، وأقدر أساعدك في حاجة تانية؟' : 'تمام 👌 قولي إنت محتاج إيه بالظبط (أرض، شقة، كمبوند، محل) وميزانيتك كام، أو ابعتلي اسمك ورقم موبايلك وفريقنا يتواصل معاك.';
+    if (/^(تمام|تمام كده|تمام الحمد لله|ماشي|ماشي كده|اوكي|اوكيه|اوك|اوكي تمام|ok|okay|حاضر|طيب|حلو|جميل|كويس|ممتاز|الحمد لله)$/.test(c)) return done ? 'تمام يا فندم 👌 فريق الأستاذ محمد هيتواصل معاك قريب.' : (state.reqSent ? 'تمام يا فندم 👌 ابعتلي اسمك ورقم موبايلك علشان فريقنا يتواصل معاك.' : 'تمام يا فندم 👌 ' + askMissing());
+    if (/^(ايوه|ايوا|ايوه يا فندم|اه|ااه|اها|ايو|ايوة|نعم|اجل|اكيد|طبعا|يب|ايه ده|اه طبعا)$/.test(c)) return done ? 'تمام يا فندم 👌 فريق الأستاذ محمد هيتواصل معاك قريب، وأقدر أساعدك في حاجة تانية؟' : 'تمام 👌 ' + askMissing();
     if (/^(لا|لأ|لاء|لاا|لا شكرا|لا خلاص|لا تمام|مش دلوقتي|خلاص|كده تمام|لا كده تمام)$/.test(c)) return done ? 'ولا يهمك يا فندم 🌹 فريق الأستاذ محمد هيتواصل معاك على رقمك، وأي وقت تحتاج حاجة أنا موجود.' : 'ولا يهمك يا فندم 🌹 أي وقت تحتاج عقار قولي وأنا أدورلك.';
     return null;
   }
 
   function respond(raw, phone, forceAgent) {
     var t = norm(raw), out = { text: '', cards: [], needsAgent: !!forceAgent };
+
+    /* رقم موبايل في الرسالة: تسجيل وتأكيد */
     if (phone) {
-      var nm = String(raw).match(/(?:اسمي|اسمى|انا|أنا)\s+([^\d\u060C,.]{2,30}?)(?=\s+(?:و|رقم)|\s*[\u060C,.\d]|$)/);
-      if (nm) out.name = nm[1].trim();
-      setUnclear(0);
+      var nm = detectName(raw);
+      if (nm) out.name = nm;
+      known.phone = phone; if (out.name) known.name = out.name;
+      saveKnown(); setUnclear(0);
       out.needsAgent = true;
-      out.text = 'تمام، سجلت رقمك (' + phone + '). هيتواصل معاك حد من فريق الأستاذ محمد في أقرب وقت.';
+      out.text = known.claimed
+        ? 'تمام يا فندم، وصلني الرقم (' + phone + ') للمطابقة مع اللي مسجل عندنا' + (known.name ? ' باسم ' + known.name : '') + ' ✅ فريق الأستاذ محمد هيتواصل معاك في أقرب وقت.'
+        : 'تمام، سجلت رقمك (' + phone + '). هيتواصل معاك حد من فريق الأستاذ محمد في أقرب وقت.';
+      known.claimed = false; saveKnown();
       return out;
     }
+
+    /* اهتمام بعرض معين: الاهتمام نفسه هو السياق، ممنوع نسأل عن نوع العقار تاني */
     if (forceAgent) {
-      out.text = 'ممتاز! علشان نكمل معاك ونحجزلك معاينة، ابعتلي اسمك ورقم موبايلك وهيتواصل معاك فريق الأستاذ محمد.';
+      var im = String(raw).match(/مهتم بالعرض ده[:：]?\s*(.+)$/);
+      if (im) known.interest = im[1].trim().slice(0, 90);
+      var ip = known.interest ? listings().filter(function (p) { return norm(p.title) === norm(known.interest); })[0] : null;
+      if (ip) {
+        if (!known.need) { known.need = ip.category; known.needLabel = catLabel(ip.category); }
+        if (!known.area && ip.area) known.area = Number(ip.area);
+      }
+      saveKnown(); setUnclear(0);
+      out.needsAgent = true;
+      if (state.haveContact || known.phone) {
+        out.text = 'تمام يا فندم، سجلت اهتمامك بـ"' + (known.interest || 'العرض ده') + '" وبياناتك موجودة عندنا ✅ فريق الأستاذ محمد هيكلمك على رقمك لتأكيد التفاصيل والمعاينة.';
+      } else {
+        out.text = 'ممتاز! اهتمامك بـ"' + (known.interest || 'العرض ده') + '" اتسجل ✍️ باقي خطوة واحدة بس: ابعتلي اسمك ورقم موبايلك وهيتواصل معاك فريق الأستاذ محمد لترتيب المعاينة.';
+      }
       return out;
     }
+
     var st = smallTalk(t);
     if (st) { setUnclear(0); out.text = st; return out; }
-    if (/^(سلام|السلام|اهلا|مرحبا|هاي|صباح|مساء|هلو|ازيك|يا معلم)/.test(t) && t.length < 30 && !detectCat(t)) {
-      out.text = 'أهلاً بيك! إنت محتاج إيه بالظبط؟ (أرض، شقة، كمبوند، فيلا، محل) وميزانيتك تقريباً كام؟';
+
+    /* العميل بيقول إن اسمه أو رقمه مسجل عندنا */
+    if (regdClaim(t)) {
+      setUnclear(0);
+      if (state.haveContact || known.phone || known.name) {
+        out.text = 'موجودين يا فندم ✅ ' + (known.name ? 'اسمك (' + known.name + ') ' : '') + (known.phone ? 'ورقمك (' + known.phone + ') ' : '') + 'مسجلين عندنا وهنكمل بيهم. فريق الأستاذ محمد هيتواصل معاك قريب.';
+      } else {
+        known.claimed = true; saveKnown();
+        out.text = 'تمام يا فندم. علشان نتأكد من تسجيلك، ابعتلي رقم الموبايل اللي اتسجلت بيه (ولو اسمك كمان يبقى أحسن) وهطابقه عندنا فوراً.';
+      }
       return out;
     }
+
+    if (/^(سلام|السلام|اهلا|مرحبا|هاي|صباح|مساء|هلو|ازيك|يا معلم)/.test(t) && t.length < 30 && !detectCat(t)) {
+      out.text = 'أهلاً بيك! ' + askMissing();
+      return out;
+    }
+
     if (/(اكلم|كلمني|اتصال|رقم الاستاذ|رقم المالك|تواصل|معاينه|اعاين|اشوف الوحده|حجز|اتفاق|تفاوض|خصم|اخر سعر|اقل سعر|اسيب رقمي)/.test(t)) {
       out.needsAgent = true;
-      out.text = 'تمام، هبلغ فريق الأستاذ محمد. ابعتلي اسمك ورقم موبايلك وهيتواصلوا معاك. وقولي أنهي عرض يهمك لو حابب.';
+      if (state.haveContact || known.phone) out.text = 'تمام يا فندم، بلغت فريق الأستاذ محمد وهيتواصلوا معاك على رقمك المسجل (' + (known.phone || '') + ') في أقرب وقت.';
+      else out.text = 'تمام، هبلغ فريق الأستاذ محمد. ابعتلي اسمك ورقم موبايلك وهيتواصلوا معاك.' + (known.interest ? ' وسجلت إن العرض اللي يهمك هو "' + known.interest + '".' : (known.need ? ' وسجلت إنك مهتم بـ' + (known.needLabel || '') + '.' : ''));
       return out;
     }
+
     if (/(كل العروض|المتاح|ايه المتاح|عندكم ايه|عندك ايه|ايه اللي عندكم|الاقسام)/.test(t)) {
       var counts = {}; listings().filter(function (p) { return !p.sold; }).forEach(function (p) { counts[p.category] = (counts[p.category] || 0) + 1; });
       var lines = CATS.filter(function (c) { return counts[c[0]]; }).map(function (c) { return '• ' + c[1] + ': ' + counts[c[0]] + ' عرض'; });
-      out.text = lines.length ? 'المتاح عندنا حالياً:\n' + lines.join('\n') + '\nقولي تحب أنهي نوع وميزانيتك كام.' : 'مفيش عروض معروضة دلوقتي، قولي طلبك وأنا أسجله وهندور لك عليه.';
+      out.text = lines.length ? 'المتاح عندنا حالياً:\n' + lines.join('\n') + '\n' + askMissing() : 'مفيش عروض معروضة دلوقتي، قولي طلبك وأنا أسجله وهندور لك عليه.';
       return out;
     }
+
     var q = search(raw);
+    /* نحدث ذاكرة الجلسة بأي معلومة جديدة */
+    var nm2 = detectName(raw);
+    if (nm2 && !known.name) known.name = nm2;
+    if (q.cat && !known.need) { known.need = q.cat[0]; known.needLabel = q.cat[1]; }
+    if (q.budget && !known.budget) known.budget = q.budget;
+    if (q.area && !known.area) known.area = q.area;
+    if (q.loc && !known.loc) known.loc = q.loc;
+    saveKnown();
+
     var intent = q.cat || q.budget || q.area || q.loc || /(ابحث|عايز|عاوز|محتاج|ابغي|اريد|اشتري|للبيع|ايجار|مطلوب)/.test(t);
     if (!intent) {
       out.needsAgent = true;
+      /* أي رسالة مش واضحة والجلسة ليها سياق: تحويل للفريق من غير ما نرجع نسأل من الأول */
+      if (hasContext()) { out.text = HOLD; return out; }
       var n = getUnclear() + 1; setUnclear(n);
-      if (n === 1 && !state.haveContact) out.text = 'مش متأكد إني فهمت طلبك كويس. ممكن توضحلي تحب أرض ولا شقة ولا كمبوند ولا محل، وميزانيتك كام؟ ولو حابب تكلم حد من الفريق ابعتلي رقمك.';
-      else if (n <= 2) out.text = 'معلش يا فندم، هخلي حد من فريق الأستاذ محمد يتولى معاك ويرد عليك هنا في الشات في أقرب وقت 🙏' + (state.haveContact ? '' : '\nولو حابب ابعتلي اسمك ورقم موبايلك.');
+      if (n === 1) { out.needsAgent = false; out.text = 'مش متأكد إني فهمت طلبك كويس. ' + askMissing() + ' ولو حابب تكلم حد من الفريق ابعتلي رقمك.'; }
+      else if (n === 2) out.text = HOLD;
       else out.text = 'رسالتك وصلت لفريق الأستاذ محمد وهيرد عليك هنا قريب 🙏';
       return out;
     }
     setUnclear(0);
     if (q.results.length) {
       out.cards = q.results.slice(0, 3).map(cardData);
-      out.text = 'لقيتلك ' + q.results.length + ' ' + (q.results.length > 1 ? 'عروض مناسبة' : 'عرض مناسب') + (q.results.length > 3 ? ' (دي أول ٣)' : '') + '. دي البيانات من عروضنا الفعلية. لو عجبك واحد دوس "أنا مهتم"، أو ابعتلي رقمك وهنكلمك.';
+      out.text = 'لقيتلك ' + q.results.length + ' ' + (q.results.length > 1 ? 'عروض مناسبة' : 'عرض مناسب') + (q.results.length > 3 ? ' (دي أول ٣)' : '') + '. دي البيانات من عروضنا الفعلية.'
+        + (state.haveContact ? ' لو عجبك واحد دوس "أنا مهتم" وهنكمل ببياناتك المسجلة.' : ' لو عجبك واحد دوس "أنا مهتم"، أو ابعتلي رقمك وهنكلمك.');
       return out;
     }
     // لا يوجد في العروض: نسجل الطلب للبحث الخارجي
     out.needsAgent = true;
     var near = q.pool.filter(function (p) { return !q.cat || p.category === q.cat[0]; }).slice(0, 2);
     out.cards = near.map(cardData);
-    var desc = [q.cat ? q.cat[1] : '', q.loc || '', q.area ? 'حوالي ' + q.area + ' م²' : '', q.budget ? 'ميزانية ' + money(q.budget) : ''].filter(Boolean).join(' - ');
-    out.text = 'الطلب ده (' + (desc || raw.slice(0, 60)) + ') مش متوفر في عروضنا حالياً بالمواصفات دي بالظبط.' + (near.length ? ' دي أقرب عروض عندنا للمقارنة.' : '') + '\nسجلت طلبك وهندور لك عليه من برّه ونرجعلك بالمتاح. ابعتلي اسمك ورقم موبايلك علشان نبلغك أول ما نلاقي.';
+    var desc = [q.cat ? q.cat[1] : '', q.loc || known.loc || '', q.area || known.area ? 'حوالي ' + (q.area || known.area) + ' م²' : '', q.budget || known.budget ? 'ميزانية ' + money(q.budget || known.budget) : ''].filter(Boolean).join(' - ');
+    out.text = 'الطلب ده (' + (desc || raw.slice(0, 60)) + ') مش متوفر في عروضنا حالياً بالمواصفات دي بالظبط.' + (near.length ? ' دي أقرب عروض عندنا للمقارنة.' : '')
+      + '\nسجلت طلبك وهندور لك عليه من برّه ونرجعلك بالمتاح.'
+      + (state.haveContact ? ' وهنبلغك على رقمك المسجل أول ما نلاقي.' : ' ابعتلي اسمك ورقم موبايلك علشان نبلغك أول ما نلاقي.');
     if (!state.reqSent || true) {
-      rpc('request_create', { p_session: sessionId, p_need: raw, p_category: q.cat ? q.cat[0] : null, p_location: q.loc || null, p_budget_max: q.budget || null, p_area_min: q.area || null, p_name: null, p_phone: null, p_details: { source: 'app_chat', matched_in_listings: 0 } });
+      rpc('request_create', { p_session: sessionId, p_need: raw, p_category: q.cat ? q.cat[0] : known.need, p_location: q.loc || known.loc || null, p_budget_max: q.budget || known.budget || null, p_area_min: q.area || known.area || null, p_name: known.name || null, p_phone: known.phone || null, p_details: { source: 'app_chat', matched_in_listings: 0 } });
       state.reqSent = true; lset('sohag_chat_reqsent', '1');
     }
     return out;
