@@ -10,6 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>سوهاج الجديدة | إدارة أ / محمد علي أبوالحمد</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
@@ -2299,7 +2300,85 @@
       if (parts.length > 0) ticker.textContent = parts.join('   ★   ');
     }
 
+
+    // ===== مزامنة سحابية (Supabase) — كل الأجهزة تشوف نفس البيانات =====
+    const SUPABASE_URL = 'https://ddjdejmzuucdbsprigbz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_cAUPNPGXZyrRY5-UN2wI5w_dERXX7hE';
+    const CLOUD_SYNC_KEYS = ['abuelhamd_properties', 'abuelhamd_pending', 'abuelhamd_news', 'abuelhamd_hidden_sections', 'abuelhamd_malls'];
+    let cloudClient = null;
+    let cloudConnected = false;
+
+    function cloudAssignLocal(key, value) {
+      try {
+        if (key === 'abuelhamd_properties') {
+          if (JSON.stringify(properties) === JSON.stringify(value)) return;
+          properties = value;
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+          handleSearchFilter(); updateStats(); refreshLiveNewsTicker();
+        } else if (key === 'abuelhamd_pending') {
+          if (JSON.stringify(pendingSubmissions) === JSON.stringify(value)) return;
+          pendingSubmissions = value;
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+          renderPendingSubmissions(); updatePendingBadges();
+        } else if (key === 'abuelhamd_news') {
+          if (JSON.stringify(newsItems) === JSON.stringify(value)) return;
+          newsItems = value;
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+          renderNews(); refreshLiveNewsTicker();
+        } else if (key === 'abuelhamd_hidden_sections') {
+          if (JSON.stringify(hiddenSections) === JSON.stringify(value)) return;
+          hiddenSections = value;
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+          applySectionVisibilityUI(); handleSearchFilter();
+        } else if (key === 'abuelhamd_malls') {
+          if (JSON.stringify(mallsList) === JSON.stringify(value)) return;
+          mallsList = value;
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+          renderMallsList();
+        }
+      } catch (e) { console.warn('cloud apply failed', key, e); }
+    }
+
+    function cloudPush(key, data) {
+      if (!cloudClient || !CLOUD_SYNC_KEYS.includes(key)) return Promise.resolve();
+      return cloudClient.from('app_kv').upsert({ key: key, value: data, updated_at: new Date().toISOString() })
+        .then(({ error }) => { if (error) console.warn('cloud push failed', key, error); })
+        .catch(e => console.warn('cloud push error', key, e));
+    }
+
+    async function initCloudSync() {
+      if (typeof supabase === 'undefined' || !supabase.createClient) return;
+      try {
+        cloudClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data, error } = await cloudClient.from('app_kv').select('key, value');
+        if (error) throw error;
+        const byKey = {};
+        (data || []).forEach(r => { byKey[r.key] = r.value; });
+        for (const key of CLOUD_SYNC_KEYS) {
+          if (key in byKey) {
+            cloudAssignLocal(key, byKey[key]);
+          } else {
+            const localRaw = localStorage.getItem(key);
+            if (localRaw !== null) {
+              try { await cloudPush(key, JSON.parse(localRaw)); } catch (_) {}
+            }
+          }
+        }
+        cloudConnected = true;
+        cloudClient.channel('app-kv-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'app_kv' }, (payload) => {
+            const row = payload.new;
+            if (row && row.key && CLOUD_SYNC_KEYS.indexOf(row.key) !== -1) cloudAssignLocal(row.key, row.value);
+          })
+          .subscribe();
+        console.log('☁️ Cloud sync connected');
+      } catch (e) {
+        console.warn('Cloud sync unavailable, continuing from local storage', e);
+      }
+    }
+
     function safeSaveStorage(key, data) {
+      cloudPush(key, data);
       try {
         localStorage.setItem(key, JSON.stringify(data));
         return true;
@@ -4234,6 +4313,7 @@
       renderNews();
       refreshLiveNewsTicker();
       switchTab('latest');
+      initCloudSync();
     });
   </script>
 

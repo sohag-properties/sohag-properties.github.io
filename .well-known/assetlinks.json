@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.sohag_properties.twa",
+        "sha256_cert_fingerprints": ["EA:C5:7B:96:38:FD:1D:7B:3C:35:B9:98:05:D7:92:94:7A:ED:B9:DA:AB:A2:6C:E3:F8:87:F1:DE:30:44:EB:BD"]
+      }
+    }]
