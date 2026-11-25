@@ -262,6 +262,20 @@
       </div>
     </div>
 
+    <!-- عدادات الإدارة: الزوار والتحميلات (من Supabase) -->
+    <div id="adminStatsStrip" class="admin-only-btn hidden bg-navy-900 border-t border-slate-700">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center gap-2 text-xs font-bold text-white">
+        <span class="text-gold-400 font-black"><i class="fa-solid fa-chart-line"></i> إحصائيات التطبيق</span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5"><i class="fa-solid fa-users text-emerald-400"></i> الزوار: <b id="statVisitors" class="text-gold-300 text-sm">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5"><i class="fa-solid fa-download text-sky-400"></i> التحميلات / أول فتح: <b id="statInstalls" class="text-gold-300 text-sm">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5">زوار آخر ٢٤ ساعة: <b id="statToday" class="text-gold-300">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5">مرات الفتح: <b id="statOpens" class="text-gold-300">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5">أجهزة فتحت لأول مرة: <b id="statFirstOpens" class="text-gold-300">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5"><i class="fa-solid fa-comments text-amber-400"></i> محادثات: <b id="statChats" class="text-gold-300">0</b></span>
+        <span class="bg-navy-700 rounded-xl px-3 py-1.5">طلبات عملاء: <b id="statRequests" class="text-gold-300">0</b></span>
+      </div>
+    </div>
+
     <!-- شريط التبويبات المرن + قائمة الأقسام والبحث المنسدلة -->
     <nav class="bg-navy-950/95 border-t border-slate-800 relative">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-2 py-2 text-xs sm:text-sm font-bold">
@@ -4388,5 +4402,6 @@
     });
   </script>
 
+<script src="chat.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body></html>
