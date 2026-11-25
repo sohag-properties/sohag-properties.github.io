@@ -2367,8 +2367,7 @@
     const SUPABASE_URL = 'https://ddjdejmzuucdbsprigbz.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_cAUPNPGXZyrRY5-UN2wI5w_dERXX7hE';
     const CLOUD_SYNC_KEYS = ['abuelhamd_properties', 'abuelhamd_pending', 'abuelhamd_news', 'abuelhamd_hidden_sections', 'abuelhamd_malls'];
-    let cloudClient = null;
-    let cloudConnected = false;
+        let cloudConnected = false;
 
     function cloudAssignLocal(key, value) {
       try {
@@ -2401,11 +2400,49 @@
       } catch (e) { console.warn('cloud apply failed', key, e); }
     }
 
+    // --- v2: مزامنة بدون مكتبات خارجية (fetch مباشر) + طابور إعادة محاولة، عشان أي رفع يفشل ما يضيعش ---
+    function cloudHeaders(extra) {
+      return Object.assign({ apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, extra || {});
+    }
+    function cloudDirtyGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_dirty') || '[]'); } catch (_) { return []; } }
+    function cloudDirtySet(arr) { try { localStorage.setItem('abuelhamd_cloud_dirty', JSON.stringify(arr)); } catch (_) {} }
+    function cloudDirtyAdd(key) { const d = cloudDirtyGet(); if (d.indexOf(key) === -1) { d.push(key); cloudDirtySet(d); } }
+    function cloudDirtyDel(key) { cloudDirtySet(cloudDirtyGet().filter(k => k !== key)); }
+    const cloudOverride = {};
+    let cloudFlushing = false, cloudFailToastAt = 0;
+
+    async function cloudFlushKey(key) {
+      const raw = (key in cloudOverride) ? cloudOverride[key] : localStorage.getItem(key);
+      if (raw === null) { cloudDirtyDel(key); return true; }
+      const ts = new Date().toISOString();
+      const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
+        method: 'POST',
+        headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: '{"key":' + JSON.stringify(key) + ',"value":' + raw + ',"updated_at":' + JSON.stringify(ts) + '}'
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      syncMetaStamp(key, Date.parse(ts));
+      if (cloudOverride[key] === raw) delete cloudOverride[key];
+      cloudDirtyDel(key);
+      return true;
+    }
+    async function cloudFlushAll() {
+      if (cloudFlushing) return;
+      cloudFlushing = true;
+      try {
+        for (const key of cloudDirtyGet()) {
+          try { await cloudFlushKey(key); }
+          catch (e) {
+            console.warn('cloud push failed, will retry', key, e);
+            if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('تعذّر الرفع للسحابة حاليًا، هيعيد المحاولة تلقائيًا'); } catch (_) {} }
+          }
+        }
+      } finally { cloudFlushing = false; }
+    }
     function cloudPush(key, data) {
-      if (!cloudClient || !CLOUD_SYNC_KEYS.includes(key)) return Promise.resolve();
-      return cloudClient.from('app_kv').upsert({ key: key, value: data, updated_at: new Date().toISOString() })
-        .then(({ error }) => { if (error) console.warn('cloud push failed', key, error); })
-        .catch(e => console.warn('cloud push error', key, e));
+      if (CLOUD_SYNC_KEYS.indexOf(key) === -1) return Promise.resolve();
+      cloudDirtyAdd(key);
+      return cloudFlushAll();
     }
 
     function syncMetaGet() {
@@ -2417,67 +2454,82 @@
       try { localStorage.setItem('abuelhamd_sync_meta', JSON.stringify(m)); } catch (_) {}
     }
 
-    async function initCloudSync() {
-      if (typeof supabase === 'undefined' || !supabase.createClient) return;
+    async function cloudPoll() {
       try {
-        cloudClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data, error } = await cloudClient.from('app_kv').select('key, value, updated_at');
-        if (error) throw error;
+        const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,updated_at', { headers: cloudHeaders() });
+        if (!res.ok) return;
+        const rows = await res.json();
+        const meta = syncMetaGet();
+        const dirty = cloudDirtyGet();
+        for (const r of rows) {
+          if (CLOUD_SYNC_KEYS.indexOf(r.key) === -1 || dirty.indexOf(r.key) !== -1) continue;
+          const cu = Date.parse(r.updated_at) || 0;
+          if (cu > (meta[r.key] || 0)) {
+            const vr = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=value,updated_at&key=eq.' + encodeURIComponent(r.key), { headers: cloudHeaders() });
+            if (!vr.ok) continue;
+            const arr = await vr.json();
+            if (arr[0]) { cloudAssignLocal(r.key, arr[0].value); syncMetaStamp(r.key, Date.parse(arr[0].updated_at) || cu); }
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function initCloudSync() {
+      try {
+        const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,value,updated_at', { headers: cloudHeaders() });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
         const byKey = {};
         (data || []).forEach(r => { byKey[r.key] = r; });
         const meta = syncMetaGet();
+        const migrated = localStorage.getItem('abuelhamd_cloud_v2') === '1';
+        const dirty = cloudDirtyGet();
         for (const key of CLOUD_SYNC_KEYS) {
           const localRaw = localStorage.getItem(key);
           if (key in byKey) {
             const cloudUpdated = Date.parse(byKey[key].updated_at) || 0;
+            let sameAsCloud = false;
+            if (localRaw !== null) { try { sameAsCloud = JSON.stringify(JSON.parse(localRaw)) === JSON.stringify(byKey[key].value); } catch (_) {} }
             if (localRaw === null) {
-              // جهاز جديد مفيهوش بيانات محلية: خد من السحابة
-              cloudAssignLocal(key, byKey[key].value);
-              syncMetaStamp(key, cloudUpdated);
+              cloudAssignLocal(key, byKey[key].value); syncMetaStamp(key, cloudUpdated);
+            } else if (sameAsCloud) {
+              syncMetaStamp(key, cloudUpdated); cloudDirtyDel(key);
+            } else if (dirty.indexOf(key) !== -1 || (!migrated && (!meta[key] || meta[key] >= cloudUpdated))) {
+              // تغييرات محلية لسه ما اترفعتش: ارفعها (المحلي بيكسب)
+              cloudDirtyAdd(key);
             } else {
-              let sameAsCloud = false;
-              try { sameAsCloud = JSON.stringify(JSON.parse(localRaw)) === JSON.stringify(byKey[key].value); } catch (_) {}
-              if (sameAsCloud) {
-                syncMetaStamp(key, cloudUpdated);
-              } else if (!meta[key] || meta[key] >= cloudUpdated) {
-                // البيانات المحلية أحدث (أو بيانات ما قبل المزامنة): ارفعها للسحابة
-                try { await cloudPush(key, JSON.parse(localRaw)); syncMetaStamp(key); } catch (_) {}
-              } else {
-                // السحابة أحدث: طبّقها محليًا
-                cloudAssignLocal(key, byKey[key].value);
-                syncMetaStamp(key, cloudUpdated);
-              }
+              cloudAssignLocal(key, byKey[key].value); syncMetaStamp(key, cloudUpdated);
             }
           } else if (localRaw !== null) {
-            try { await cloudPush(key, JSON.parse(localRaw)); syncMetaStamp(key); } catch (_) {}
+            cloudDirtyAdd(key);
           }
         }
+        try { localStorage.setItem('abuelhamd_cloud_v2', '1'); } catch (_) {}
+        await cloudFlushAll();
         cloudConnected = true;
-        cloudClient.channel('app-kv-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'app_kv' }, (payload) => {
-            const row = payload.new;
-            if (row && row.key && CLOUD_SYNC_KEYS.indexOf(row.key) !== -1) {
-              cloudAssignLocal(row.key, row.value);
-              syncMetaStamp(row.key, Date.parse(row.updated_at) || Date.now());
-            }
-          })
-          .subscribe();
-        console.log('☁️ Cloud sync connected');
+        setInterval(() => { cloudFlushAll().then(cloudPoll); }, 15000);
+        window.addEventListener('online', () => { cloudFlushAll().then(cloudPoll); });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudFlushAll().then(cloudPoll); });
+        console.log('☁️ Cloud sync connected (v2)');
       } catch (e) {
-        console.warn('Cloud sync unavailable, continuing from local storage', e);
+        console.warn('Cloud sync unavailable, will retry', e);
+        setTimeout(initCloudSync, 20000);
       }
     }
 
     function safeSaveStorage(key, data) {
       if (CLOUD_SYNC_KEYS.indexOf(key) !== -1) syncMetaStamp(key);
-      cloudPush(key, data);
+      let ok = true;
       try {
         localStorage.setItem(key, JSON.stringify(data));
-        return true;
       } catch (e) {
+        ok = false;
         showToast("تنبيه: مساحة التخزين ممتلئة، يرجى تقليل عدد الصور");
-        return false;
       }
+      // الرفع للسحابة بعد الحفظ المحلي (بيقرا النسخة المحفوظة ويعيد المحاولة لو فشل)
+      if (!ok) { try { cloudOverride[key] = JSON.stringify(data); } catch (_) {} }
+      cloudPush(key, data);
+      return ok;
     }
 
     function compressImageFile(file) {
