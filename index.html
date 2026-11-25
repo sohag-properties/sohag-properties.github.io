@@ -2346,29 +2346,58 @@
         .catch(e => console.warn('cloud push error', key, e));
     }
 
+    function syncMetaGet() {
+      try { return JSON.parse(localStorage.getItem('abuelhamd_sync_meta') || '{}'); } catch (_) { return {}; }
+    }
+    function syncMetaStamp(key, ts) {
+      const m = syncMetaGet();
+      m[key] = ts || Date.now();
+      try { localStorage.setItem('abuelhamd_sync_meta', JSON.stringify(m)); } catch (_) {}
+    }
+
     async function initCloudSync() {
       if (typeof supabase === 'undefined' || !supabase.createClient) return;
       try {
         cloudClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const { data, error } = await cloudClient.from('app_kv').select('key, value');
+        const { data, error } = await cloudClient.from('app_kv').select('key, value, updated_at');
         if (error) throw error;
         const byKey = {};
-        (data || []).forEach(r => { byKey[r.key] = r.value; });
+        (data || []).forEach(r => { byKey[r.key] = r; });
+        const meta = syncMetaGet();
         for (const key of CLOUD_SYNC_KEYS) {
+          const localRaw = localStorage.getItem(key);
           if (key in byKey) {
-            cloudAssignLocal(key, byKey[key]);
-          } else {
-            const localRaw = localStorage.getItem(key);
-            if (localRaw !== null) {
-              try { await cloudPush(key, JSON.parse(localRaw)); } catch (_) {}
+            const cloudUpdated = Date.parse(byKey[key].updated_at) || 0;
+            if (localRaw === null) {
+              // جهاز جديد مفيهوش بيانات محلية: خد من السحابة
+              cloudAssignLocal(key, byKey[key].value);
+              syncMetaStamp(key, cloudUpdated);
+            } else {
+              let sameAsCloud = false;
+              try { sameAsCloud = JSON.stringify(JSON.parse(localRaw)) === JSON.stringify(byKey[key].value); } catch (_) {}
+              if (sameAsCloud) {
+                syncMetaStamp(key, cloudUpdated);
+              } else if (!meta[key] || meta[key] >= cloudUpdated) {
+                // البيانات المحلية أحدث (أو بيانات ما قبل المزامنة): ارفعها للسحابة
+                try { await cloudPush(key, JSON.parse(localRaw)); syncMetaStamp(key); } catch (_) {}
+              } else {
+                // السحابة أحدث: طبّقها محليًا
+                cloudAssignLocal(key, byKey[key].value);
+                syncMetaStamp(key, cloudUpdated);
+              }
             }
+          } else if (localRaw !== null) {
+            try { await cloudPush(key, JSON.parse(localRaw)); syncMetaStamp(key); } catch (_) {}
           }
         }
         cloudConnected = true;
         cloudClient.channel('app-kv-changes')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'app_kv' }, (payload) => {
             const row = payload.new;
-            if (row && row.key && CLOUD_SYNC_KEYS.indexOf(row.key) !== -1) cloudAssignLocal(row.key, row.value);
+            if (row && row.key && CLOUD_SYNC_KEYS.indexOf(row.key) !== -1) {
+              cloudAssignLocal(row.key, row.value);
+              syncMetaStamp(row.key, Date.parse(row.updated_at) || Date.now());
+            }
           })
           .subscribe();
         console.log('☁️ Cloud sync connected');
@@ -2378,6 +2407,7 @@
     }
 
     function safeSaveStorage(key, data) {
+      if (CLOUD_SYNC_KEYS.indexOf(key) !== -1) syncMetaStamp(key);
       cloudPush(key, data);
       try {
         localStorage.setItem(key, JSON.stringify(data));
