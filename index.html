@@ -2486,9 +2486,11 @@
       cloudDirtyDel(key);
       return true;
     }
+    let cloudFlushAgain = false;
     async function cloudFlushAll() {
-      if (cloudFlushing) return;
+      if (cloudFlushing) { cloudFlushAgain = true; return; }
       cloudFlushing = true;
+      cloudFlushAgain = false;
       try {
         for (const key of cloudDirtyGet()) {
           try { await cloudFlushKey(key); }
@@ -2498,6 +2500,7 @@
           }
         }
       } finally { cloudFlushing = false; }
+      if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
     }
     function cloudPush(key, data) {
       if (CLOUD_SYNC_KEYS.indexOf(key) === -1) return Promise.resolve();
