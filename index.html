@@ -687,36 +687,36 @@
         </div>
     </section>
 
-    <!-- قسم خريطة مدينة سوهاج الجديدة (عارض AutoCAD Web المثبت) -->
+    <!-- قسم خريطة مدينة سوهاج الجديدة (عارض داخلي تفاعلي) -->
     <section id="citymapSection" class="space-y-4">
       <div class="bg-navy-900 text-white p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 border border-gold-500/40">
         <div>
           <h2 class="text-base sm:text-lg font-black text-gold-400 flex items-center gap-2">
-            <i class="fa-solid fa-map"></i> خريطة ومخطط مدينة سوهاج الجديدة (AutoCAD Web)
+            <i class="fa-solid fa-map"></i> خريطة ومخطط مدينة سوهاج الجديدة
           </h2>
-          <p class="text-xs text-slate-300 mt-0.5">المخطط الهندسي المعتمد لمدينة سوهاج الجديدة مدمج مباشرة داخل التطبيق</p>
+          <p class="text-xs text-slate-300 mt-0.5">المخطط الهندسي لمدينة سوهاج الجديدة بالكامل داخل التطبيق: تكبير وتحريك بالإصبع، وأرقام القطع بتظهر لما تقرّب</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" onclick="reloadAutoCadMapFrame()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow">
-            <i class="fa-solid fa-rotate-right"></i> إعادة تحميل الخريطة
+          <button type="button" onclick="cityMapReset()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow">
+            <i class="fa-solid fa-rotate-right"></i> عرض المدينة كاملة
           </button>
           <button type="button" onclick="toggleAutoCadFullscreen()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer border border-slate-600">
             <i class="fa-solid fa-expand"></i> ملء الشاشة
           </button>
-          <a href="https://web.autocad.com/acad/me/sid/shares/drawings/1731e143-6762-4d20-9b55-66d4985d3c24/editor?data=eyJmaWxlU2hhcmVkIjoi2YXYrdmF2K8g2LnZhNmKINin2KjZiNin2YTYrdmF2K8g2aLZoNmi2aYuZHdnIiwiZmlyc3ROYW1lIjoiTW9oYW1lZCIsImxhc3ROYW1lIjoiQWxpIiwidmVyc2lvbiI6IjQuMjEuMCIsInBsYXRmb3JtIjoid2ViIn0" target="_blank" rel="noopener noreferrer" class="bg-gold-500 hover:bg-gold-400 text-navy-950 text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow">
-            <i class="fa-solid fa-up-right-from-square"></i> فتح في AutoCAD Web
-          </a>
         </div>
       </div>
 
-      <div id="autoCadViewerContainer" class="bg-[#0b1320] rounded-3xl border-2 border-slate-700 overflow-hidden shadow-xl relative">
+      <div id="autoCadViewerContainer" class="bg-[#05080f] rounded-3xl border-2 border-slate-700 overflow-hidden shadow-xl relative">
         <div class="bg-slate-900/95 px-4 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300 font-bold">
-          <span><i class="fa-solid fa-compass-drafting text-gold-400 ml-1"></i> مخطط مدينة سوهاج الجديدة.dwg — عارض AutoCAD Web المباشر</span>
-          <span class="text-emerald-400">استخدم عجلة الماوس أو اللمس للتكبير والتحريك</span>
+          <span><i class="fa-solid fa-compass-drafting text-gold-400 ml-1"></i> مخطط مدينة سوهاج الجديدة</span>
+          <span id="cityMapZoomInfo" class="text-emerald-400">المقياس: عام</span>
         </div>
-        <div class="w-full h-[520px] sm:h-[640px] relative bg-[#0b1320]">
-          <iframe id="sohagAutoCadIframe" src="https://web.autocad.com/acad/me/sid/shares/drawings/1731e143-6762-4d20-9b55-66d4985d3c24/editor?data=eyJmaWxlU2hhcmVkIjoi2YXYrdmF2K8g2LnZhNmKINin2KjZiNin2YTYrdmF2K8g2aLZoNmi2aYuZHdnIiwiZmlyc3ROYW1lIjoiTW9oYW1lZCIsImxhc3ROYW1lIjoiQWxpIiwidmVyc2lvbiI6IjQuMjEuMCIsInBsYXRmb3JtIjoid2ViIn0" class="w-full h-full border-0" allow="fullscreen; clipboard-read; clipboard-write" loading="lazy" title="خريطة مدينة سوهاج الجديدة - AutoCAD Web">
-          </iframe>
+        <div id="cityMapCanvasHost" class="w-full h-[520px] sm:h-[640px] relative bg-[#05080f]">
+          <div id="cityMapStatus" class="absolute inset-0 flex items-center justify-center text-slate-300 text-sm font-bold pointer-events-none">جاري تحميل الخريطة...</div>
+          <div class="absolute bottom-3 left-3 flex flex-col gap-2 z-10">
+            <button type="button" onclick="cityMapZoom(1.6)" class="w-10 h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xl font-black border border-slate-600 cursor-pointer">+</button>
+            <button type="button" onclick="cityMapZoom(0.625)" class="w-10 h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xl font-black border border-slate-600 cursor-pointer">−</button>
+          </div>
         </div>
       </div>
     </section>
@@ -2771,6 +2771,7 @@
       }
       if (tab === 'citymap') {
         if (mapSec) mapSec.classList.remove('hidden');
+        if (window.cityMapInit) setTimeout(window.cityMapInit, 50);
         return;
       }
       if (tab === 'pending') {
@@ -4463,28 +4464,17 @@
       refreshLiveNewsTicker();
     }
 
-    // 12.5 التحكم في عارض خريطة مدينة سوهاج الجديدة (AutoCAD Web)
-    const SOHAG_AUTOCAD_MAP_URL = "https://web.autocad.com/acad/me/sid/shares/drawings/1731e143-6762-4d20-9b55-66d4985d3c24/editor?data=eyJmaWxlU2hhcmVkIjoi2YXYrdmF2K8g2LnZhNmKINin2KjZiNin2YTYrdmF2K8g2aLZoNmi2aYuZHdnIiwiZmlyc3ROYW1lIjoiTW9oYW1lZCIsImxhc3ROYW1lIjoiQWxpIiwidmVyc2lvbiI6IjQuMjEuMCIsInBsYXRmb3JtIjoid2ViIn0";
-
-    function reloadAutoCadMapFrame() {
-      const iframe = document.getElementById('sohagAutoCadIframe');
-      if (iframe) {
-        iframe.src = SOHAG_AUTOCAD_MAP_URL;
-        showToast("جاري تحديث وعرض خريطة مدينة سوهاج الجديدة...");
-      }
-    }
-
+    // 12.5 عارض خريطة مدينة سوهاج الجديدة (داخل التطبيق)
     function toggleAutoCadFullscreen() {
       const container = document.getElementById('autoCadViewerContainer');
       if (!container) return;
       if (!document.fullscreenElement) {
-        container.requestFullscreen?.().catch(() => {
-          window.open(SOHAG_AUTOCAD_MAP_URL, '_blank');
-        });
+        container.requestFullscreen?.().then(() => setTimeout(() => window.cityMapResize && window.cityMapResize(), 300)).catch(() => {});
       } else {
         document.exitFullscreen?.();
       }
     }
+    document.addEventListener('fullscreenchange', () => setTimeout(() => window.cityMapResize && window.cityMapResize(), 300));
 
     // 13. شرائح الصور ومعرض الصور
     let cardSlideIndices = {};
@@ -4619,6 +4609,7 @@
     });
   </script>
 
+<script src="citymap.js?v=1"></script>
 <script src="chat.js?v=6"></script>
 <script src="admin-chats.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
