@@ -889,7 +889,7 @@
           </div>
           <div id="adminMainAreaWrap">
             <label id="adminAreaLabel" class="block text-xs font-black text-slate-700 mb-1">المساحة (م²) *</label>
-            <input type="number" id="propArea" oninput="recalcAdminFinancials()" required="" placeholder="500" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+            <input type="number" id="propArea" oninput="recalcAdminFinancials();mallSync('admin','area')" required="" placeholder="500" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
           </div>
         </div>
 
@@ -1115,7 +1115,7 @@
         <!-- حقول خاصة بالمولات التجارية -->
         <div id="adminMallFields" class="hidden bg-amber-50/70 border border-amber-200 p-3.5 rounded-2xl space-y-3">
           <div class="text-xs font-black text-amber-950 flex items-center gap-1.5">
-            <i class="fa-solid fa-shop text-amber-600"></i> البيانات المالية والحسابية للوحدة التجارية / الإدارية
+            <i class="fa-solid fa-shop text-amber-600"></i> بيانات المحل التجاري (المساحة × سعر المتر = الإجمالي تلقائيًا)
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <div>
@@ -1123,40 +1123,59 @@
               <input type="text" id="adminMallFloor" placeholder="الأرضي / الأول..." class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">سعر المتر (جنيه/م²)</label>
-              <input type="number" id="adminMallPricePerMeter" placeholder="يُحسب تلقائياً" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">سعر المتر (ج.م/م²)</label>
+              <input type="number" id="adminMallPricePerMeter" oninput="mallSync('admin','ppm')" placeholder="سعر المتر" class="w-full px-2.5 py-2 bg-white border border-emerald-400 rounded-xl text-xs font-black text-emerald-900">
             </div>
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">المبلغ المدفوع (ج.م)</label>
-              <input type="number" id="adminMallPaid" oninput="recalcAdminFinancials()" placeholder="المقدم + الأقساط المسددة" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة الأوفر (إن وُجد)</label>
-              <input type="number" id="adminMallOver" oninput="recalcAdminFinancials()" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-emerald-800 mb-1">إجمالي المطلوب كاش الآن</label>
-              <input type="number" id="adminMallCashNow" readonly="" class="w-full px-2.5 py-2 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-black text-emerald-900">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">المبلغ المتبقي (ج.م)</label>
-              <input type="number" id="adminMallRemaining" placeholder="يُحسب تلقائياً" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد (ج.م)</label>
-              <input type="number" id="adminMallInstallmentVal" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">دورية السداد</label>
-              <select id="adminMallFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-                <option value="ربع سنوي">ربع سنوي</option>
-                <option value="نصف سنوي">نصف سنوي</option>
-                <option value="سنوي">سنوي</option>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">الاستلام *</label>
+              <select id="adminMallDelivery" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                <option value="استلام فوري">استلام فوري</option>
+                <option value="بعد سنة">بعد سنة</option>
+                <option value="بعد سنتين">بعد سنتين</option>
+                <option value="بعد 3 سنوات">بعد 3 سنوات</option>
               </select>
             </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">مدة التقسيط المتبقية (سنوات)</label>
-              <input type="text" id="adminMallRemYears" placeholder="مثال: 3 سنوات" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            <div class="col-span-2 sm:col-span-3">
+              <label class="block text-[11px] font-black text-navy-900 mb-1">نظام الدفع *</label>
+              <select id="adminMallPayMode" onchange="mallRecalc('admin')" class="w-full px-2.5 py-2 bg-white border-2 border-emerald-500 rounded-xl text-xs font-black text-navy-900">
+                <option value="cash">كاش بالكامل</option>
+                <option value="installments">بالتقسيط</option>
+              </select>
+            </div>
+          </div>
+          <div id="adminMallInstBox" class="hidden bg-white border border-emerald-300 p-3 rounded-xl space-y-2.5">
+            <div class="text-[11px] font-black text-emerald-900">تفاصيل التقسيط (احتساب تلقائي):</div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">المقدم (ج.م)</label>
+                <input type="number" id="adminMallDown" oninput="mallRecalc('admin')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">الأوفر (ج.م)</label>
+                <input type="number" id="adminMallOver" oninput="mallRecalc('admin')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">دورية السداد</label>
+                <select id="adminMallFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                  <option value="ربع سنوي">ربع سنوي</option>
+                  <option value="نصف سنوي">نصف سنوي</option>
+                  <option value="سنوي">سنوي</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">إجمالي عدد الأقساط</label>
+                <input type="number" min="0" id="adminMallInstTotal" oninput="mallRecalc('admin')" placeholder="مثال: 12" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">الأقساط المدفوعة</label>
+                <input type="number" min="0" id="adminMallInstPaid" oninput="mallRecalc('admin')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px] font-bold">
+              <div class="bg-sky-50 border border-sky-200 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-sky-900">الأقساط المتبقية:</span><span id="adminMallRemCountDisp" class="font-black text-sky-950">0</span></div>
+              <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-emerald-900">قيمة القسط:</span><span id="adminMallInstValDisp" class="font-black text-emerald-800">0</span></div>
+              <div class="bg-slate-50 border border-slate-200 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-slate-600">المبلغ المتبقي:</span><span id="adminMallRemAmtDisp" class="font-black text-navy-900">0</span></div>
+              <div class="bg-amber-50 border border-amber-300 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-amber-900">المطلوب كاش الآن:</span><span id="adminMallCashNowDisp" class="font-black text-amber-900">0</span></div>
             </div>
           </div>
         </div>
@@ -1213,7 +1232,7 @@
         <div id="adminGeneralPriceAndPayRow" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-black text-slate-700 mb-1">السعر الإجمالي المطلوب (جنيه مصري) *</label>
-            <input type="number" id="propTotalPrice" oninput="recalcAdminFinancials()" required="" placeholder="2500000" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-black text-navy-900">
+            <input type="number" id="propTotalPrice" oninput="recalcAdminFinancials();mallSync('admin','total')" required="" placeholder="2500000" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-black text-navy-900">
           </div>
           <div id="adminPaymentStatusWrap">
             <label class="block text-xs font-black text-slate-700 mb-1">حالة السداد / الأقساط</label>
@@ -1480,11 +1499,11 @@
           </div>
           <div>
             <label class="block text-xs font-black text-slate-700 mb-1">المساحة (م²) *</label>
-            <input type="number" id="clientArea" required="" placeholder="500" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+            <input type="number" id="clientArea" oninput="mallSync('client','area')" required="" placeholder="500" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
           </div>
           <div>
             <label class="block text-xs font-black text-slate-700 mb-1">السعر المطلوب (ج.م) *</label>
-            <input type="number" id="clientTotalPrice" required="" placeholder="2000000" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+            <input type="number" id="clientTotalPrice" oninput="mallSync('client','total')" required="" placeholder="2000000" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
           </div>
         </div>
 
@@ -1527,34 +1546,70 @@
         </div>
 
         <!-- حقول المولات للعميل -->
-        <div id="clientMallFields" class="hidden bg-amber-50/70 border border-amber-200 p-3 rounded-2xl grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">الدور</label>
-            <input type="text" id="clientMallFloor" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+        <div id="clientMallFields" class="hidden bg-amber-50/70 border border-amber-200 p-3.5 rounded-2xl space-y-3">
+          <div class="text-xs font-black text-amber-950 flex items-center gap-1.5">
+            <i class="fa-solid fa-shop text-amber-600"></i> بيانات المحل التجاري (المساحة × سعر المتر = الإجمالي تلقائيًا)
           </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">المبلغ المدفوع</label>
-            <input type="number" id="clientMallPaid" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">الدور</label>
+              <input type="text" id="clientMallFloor" placeholder="الأرضي / الأول..." class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">سعر المتر (ج.م/م²)</label>
+              <input type="number" id="clientMallPricePerMeter" oninput="mallSync('client','ppm')" placeholder="سعر المتر" class="w-full px-2.5 py-2 bg-white border border-emerald-400 rounded-xl text-xs font-black text-emerald-900">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">الاستلام *</label>
+              <select id="clientMallDelivery" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                <option value="استلام فوري">استلام فوري</option>
+                <option value="بعد سنة">بعد سنة</option>
+                <option value="بعد سنتين">بعد سنتين</option>
+                <option value="بعد 3 سنوات">بعد 3 سنوات</option>
+              </select>
+            </div>
+            <div class="col-span-2 sm:col-span-3">
+              <label class="block text-[11px] font-black text-navy-900 mb-1">نظام الدفع *</label>
+              <select id="clientMallPayMode" onchange="mallRecalc('client')" class="w-full px-2.5 py-2 bg-white border-2 border-emerald-500 rounded-xl text-xs font-black text-navy-900">
+                <option value="cash">كاش بالكامل</option>
+                <option value="installments">بالتقسيط</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة الأوفر (إن وُجد)</label>
-            <input type="number" id="clientMallOver" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-          </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد</label>
-            <input type="number" id="clientMallInstallmentVal" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-          </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">دورية السداد</label>
-            <select id="clientMallFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-              <option value="ربع سنوي">ربع سنوي</option>
-              <option value="نصف سنوي">نصف سنوي</option>
-              <option value="سنوي">سنوي</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">مدة التقسيط المتبقية</label>
-            <input type="text" id="clientMallRemYears" placeholder="متبقي كام سنة" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+          <div id="clientMallInstBox" class="hidden bg-white border border-emerald-300 p-3 rounded-xl space-y-2.5">
+            <div class="text-[11px] font-black text-emerald-900">تفاصيل التقسيط (احتساب تلقائي):</div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">المقدم (ج.م)</label>
+                <input type="number" id="clientMallDown" oninput="mallRecalc('client')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">الأوفر (ج.م)</label>
+                <input type="number" id="clientMallOver" oninput="mallRecalc('client')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">دورية السداد</label>
+                <select id="clientMallFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                  <option value="ربع سنوي">ربع سنوي</option>
+                  <option value="نصف سنوي">نصف سنوي</option>
+                  <option value="سنوي">سنوي</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">إجمالي عدد الأقساط</label>
+                <input type="number" min="0" id="clientMallInstTotal" oninput="mallRecalc('client')" placeholder="مثال: 12" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">الأقساط المدفوعة</label>
+                <input type="number" min="0" id="clientMallInstPaid" oninput="mallRecalc('client')" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px] font-bold">
+              <div class="bg-sky-50 border border-sky-200 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-sky-900">الأقساط المتبقية:</span><span id="clientMallRemCountDisp" class="font-black text-sky-950">0</span></div>
+              <div class="bg-emerald-50 border border-emerald-300 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-emerald-900">قيمة القسط:</span><span id="clientMallInstValDisp" class="font-black text-emerald-800">0</span></div>
+              <div class="bg-slate-50 border border-slate-200 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-slate-600">المبلغ المتبقي:</span><span id="clientMallRemAmtDisp" class="font-black text-navy-900">0</span></div>
+              <div class="bg-amber-50 border border-amber-300 px-2.5 py-2 rounded-xl flex items-center justify-between gap-1"><span class="text-amber-900">المطلوب كاش الآن:</span><span id="clientMallCashNowDisp" class="font-black text-amber-900">0</span></div>
+            </div>
           </div>
         </div>
 
@@ -2851,6 +2906,18 @@
       }
       if (item.mallDetails) {
         const m = item.mallDetails;
+        const nf = v => Number(v || 0).toLocaleString('ar-EG');
+        if (m.payMode) {
+          extraSpecsHTML += `<div class="bg-amber-50 border border-amber-200 text-amber-950 p-2.5 rounded-xl text-[11px] font-bold space-y-1">
+            <div>الدور: <span class="font-black">${m.floor || '-'}</span> • سعر المتر: <span class="font-black">${nf(m.pricePerMeter)} ج.م</span> • الاستلام: <span class="font-black text-emerald-800">${m.deliveryTime || 'استلام فوري'}</span></div>
+            ${m.payMode === 'installments' ? `
+              <div>المقدم: <span class="font-black">${nf(m.downPayment)} ج.م</span> • الأوفر: <span class="font-black">${nf(m.over)} ج.م</span></div>
+              <div>الأقساط: مدفوع <span class="font-black">${nf(m.installmentsPaid)}</span> • متبقي <span class="font-black">${nf(m.installmentsRemaining)}</span> من <span class="font-black">${nf(m.installmentsTotal)}</span> (${m.freq || ''})</div>
+              <div class="text-navy-900 font-black">قيمة القسط: ${nf(m.installmentVal)} ج.م • المتبقي: ${nf(m.remaining)} ج.م</div>
+              <div class="text-emerald-800 font-black">المطلوب كاش الآن: ${nf(m.cashNow)} ج.م</div>
+            ` : `<div class="text-emerald-700 font-black">كاش بالكامل</div>`}
+          </div>`;
+        } else {
         extraSpecsHTML += `<div class="bg-amber-50 border border-amber-200 text-amber-950 p-2.5 rounded-xl text-[11px] font-bold space-y-1">
           <div>الدور: <span class="font-black">${m.floor || '-'}</span> • سعر المتر: <span class="font-black">${Number(m.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span></div>
           <div>المدفوع: <span class="font-black">${Number(m.paid || 0).toLocaleString('ar-EG')}</span> • الأوفر: <span class="font-black">${Number(m.over || 0).toLocaleString('ar-EG')}</span></div>
@@ -2858,6 +2925,7 @@
           <div>المتبقي: <span class="font-black">${Number(m.remaining || 0).toLocaleString('ar-EG')} ج.م</span> • القسط: <span class="font-black">${Number(m.installmentVal || 0).toLocaleString('ar-EG')} (${m.freq || ''})</span></div>
           ${m.remYears ? `<div>المدة المتبقية: <span class="font-black">${m.remYears}</span></div>` : ''}
         </div>`;
+        }
       }
       if (item.factoryDetails) {
         const f = item.factoryDetails;
@@ -3065,15 +3133,18 @@
           document.getElementById('adminCompFreq').value = item.compoundDetails.freq || 'ربع سنوي';
         }
         if (item.mallDetails) {
-          document.getElementById('adminMallFloor').value = item.mallDetails.floor || '';
-          document.getElementById('adminMallPricePerMeter').value = item.mallDetails.pricePerMeter || '';
-          document.getElementById('adminMallPaid').value = item.mallDetails.paid || '';
-          document.getElementById('adminMallOver').value = item.mallDetails.over || '';
-          document.getElementById('adminMallCashNow').value = item.mallDetails.cashNow || '';
-          document.getElementById('adminMallRemaining').value = item.mallDetails.remaining || '';
-          document.getElementById('adminMallInstallmentVal').value = item.mallDetails.installmentVal || '';
-          document.getElementById('adminMallFreq').value = item.mallDetails.freq || 'ربع سنوي';
-          document.getElementById('adminMallRemYears').value = item.mallDetails.remYears || '';
+          const m = item.mallDetails;
+          document.getElementById('adminMallFloor').value = m.floor || '';
+          document.getElementById('adminMallPricePerMeter').value = m.pricePerMeter || '';
+          document.getElementById('adminMallDelivery').value = m.deliveryTime || 'استلام فوري';
+          const legacyInst = !m.payMode && ((m.installmentVal || 0) > 0 || (m.remaining || 0) > 0);
+          document.getElementById('adminMallPayMode').value = m.payMode || (legacyInst ? 'installments' : 'cash');
+          document.getElementById('adminMallDown').value = m.downPayment || '';
+          document.getElementById('adminMallOver').value = m.over || '';
+          document.getElementById('adminMallFreq').value = m.freq || 'ربع سنوي';
+          document.getElementById('adminMallInstTotal').value = m.installmentsTotal || '';
+          document.getElementById('adminMallInstPaid').value = m.installmentsPaid || '';
+          mallRecalc('admin');
         }
         if (item.factoryDetails) {
           document.getElementById('adminFactoryActivityText').value = item.factoryDetails.activity || '';
@@ -3113,6 +3184,7 @@
       document.getElementById('adminMallFields').classList.toggle('hidden', cat !== 'malls');
       document.getElementById('adminFactoryFields').classList.toggle('hidden', cat !== 'factories');
       document.getElementById('adminUnifiedApartmentSection').classList.toggle('hidden', !isApt);
+      { const pw = document.getElementById('adminPaymentStatusWrap'); if (pw) pw.classList.toggle('hidden', cat === 'malls'); if (cat === 'malls') mallSync('admin', 'area'); }
 
       // إخفاء الحقول العامة المكررة عند اختيار الوحدات السكنية
       const mainAreaWrap = document.getElementById('adminMainAreaWrap');
@@ -3312,6 +3384,65 @@
       return sched;
     }
 
+    // ===== المحلات التجارية: المساحة × سعر المتر = الإجمالي، وكاش/تقسيط =====
+    function mallNum(id) { return parseFloat(document.getElementById(id)?.value) || 0; }
+    function mallCat(p) { return document.getElementById(p === 'admin' ? 'propCategory' : 'clientCategory')?.value; }
+    function mallSync(p, src) {
+      if (mallCat(p) !== 'malls') return;
+      const aId = p === 'admin' ? 'propArea' : 'clientArea';
+      const tId = p === 'admin' ? 'propTotalPrice' : 'clientTotalPrice';
+      const area = mallNum(aId), total = mallNum(tId), ppm = mallNum(p + 'MallPricePerMeter');
+      const tEl = document.getElementById(tId), pEl = document.getElementById(p + 'MallPricePerMeter');
+      if (src === 'area' || src === 'ppm') {
+        if (area > 0 && ppm > 0) tEl.value = Math.round(area * ppm);
+        else if (src === 'area' && area > 0 && total > 0) pEl.value = Math.round(total / area);
+      } else if (src === 'total') {
+        if (area > 0 && total > 0) pEl.value = Math.round(total / area);
+      }
+      mallRecalc(p);
+    }
+    function mallRecalc(p) {
+      const mode = document.getElementById(p + 'MallPayMode')?.value || 'cash';
+      const box = document.getElementById(p + 'MallInstBox');
+      if (box) box.classList.toggle('hidden', mode !== 'installments');
+      const total = mallNum(p === 'admin' ? 'propTotalPrice' : 'clientTotalPrice');
+      const down = mallNum(p + 'MallDown'), over = mallNum(p + 'MallOver');
+      const n = Math.max(0, Math.round(mallNum(p + 'MallInstTotal')));
+      const paidN = Math.min(n, Math.max(0, Math.round(mallNum(p + 'MallInstPaid'))));
+      const remN = Math.max(0, n - paidN);
+      const val = n > 0 ? Math.round(Math.max(0, total - down) / n) : 0;
+      const paidAmt = down + val * paidN;
+      const remAmt = Math.max(0, total - paidAmt);
+      const cashNow = paidAmt + over;
+      const fmt = v => Number(v || 0).toLocaleString('ar-EG');
+      const set = (id, t) => { const e = document.getElementById(p + id); if (e) e.textContent = t; };
+      set('MallRemCountDisp', fmt(remN) + ' قسط');
+      set('MallInstValDisp', fmt(val) + ' ج.م');
+      set('MallRemAmtDisp', fmt(remAmt) + ' ج.م');
+      set('MallCashNowDisp', fmt(cashNow) + ' ج.م');
+      return { mode, down, over, n, paidN, remN, val, paidAmt, remAmt, cashNow };
+    }
+    function mallBuildDetails(p, area, totalPrice) {
+      const r = mallRecalc(p);
+      const d = {
+        floor: document.getElementById(p + 'MallFloor').value.trim(),
+        pricePerMeter: mallNum(p + 'MallPricePerMeter') || (area > 0 ? Math.round(totalPrice / area) : 0),
+        deliveryTime: document.getElementById(p + 'MallDelivery').value,
+        payMode: r.mode
+      };
+      if (r.mode === 'installments') {
+        Object.assign(d, {
+          freq: document.getElementById(p + 'MallFreq').value,
+          downPayment: r.down, over: r.over, installmentsTotal: r.n, installmentsPaid: r.paidN,
+          installmentsRemaining: r.remN, installmentVal: r.val, paid: r.paidAmt, remaining: r.remAmt, cashNow: r.cashNow
+        });
+      }
+      return d;
+    }
+    function mallPaymentText(d) {
+      return d.payMode === 'installments' ? `بالتقسيط (${d.freq} — ${d.deliveryTime})` : `كاش بالكامل (${d.deliveryTime})`;
+    }
+
     function recalcAdminFinancials() {
       const cat = document.getElementById('propCategory').value;
       const area = parseFloat(document.getElementById('propArea').value) || 0;
@@ -3323,15 +3454,7 @@
       if (cat === 'compounds' && area > 0 && total > 0) {
         document.getElementById('adminCompPricePerMeter').value = Math.round(total / area);
       }
-      if (cat === 'malls') {
-        if (area > 0 && total > 0) {
-          document.getElementById('adminMallPricePerMeter').value = Math.round(total / area);
-        }
-        const paid = parseFloat(document.getElementById('adminMallPaid').value) || 0;
-        const over = parseFloat(document.getElementById('adminMallOver').value) || 0;
-        document.getElementById('adminMallCashNow').value = paid + over;
-        document.getElementById('adminMallRemaining').value = Math.max(0, total - paid);
-      }
+      if (cat === 'malls') { mallRecalc('admin'); }
     }
 
     function saveProperty(e) {
@@ -3462,19 +3585,8 @@
         }
 
         if (cat === 'malls') {
-          const paid = parseFloat(document.getElementById('adminMallPaid').value) || 0;
-          const over = parseFloat(document.getElementById('adminMallOver').value) || 0;
-          propObj.mallDetails = {
-            floor: document.getElementById('adminMallFloor').value.trim(),
-            pricePerMeter: parseFloat(document.getElementById('adminMallPricePerMeter').value) || (area > 0 ? Math.round(totalPrice / area) : 0),
-            paid,
-            over,
-            cashNow: paid + over,
-            remaining: parseFloat(document.getElementById('adminMallRemaining').value) || Math.max(0, totalPrice - paid),
-            installmentVal: parseFloat(document.getElementById('adminMallInstallmentVal').value) || 0,
-            freq: document.getElementById('adminMallFreq').value,
-            remYears: document.getElementById('adminMallRemYears').value.trim()
-          };
+          propObj.mallDetails = mallBuildDetails('admin', area, totalPrice);
+          propObj.paymentStatus = mallPaymentText(propObj.mallDetails);
         }
 
         if (cat === 'factories') {
@@ -3606,6 +3718,7 @@
       document.getElementById('clientMallFields').classList.toggle('hidden', cat !== 'malls');
       document.getElementById('clientFactoryFields').classList.toggle('hidden', cat !== 'factories');
       document.getElementById('clientUnifiedApartmentSection').classList.toggle('hidden', !isApt);
+      if (cat === 'malls') mallRecalc('client');
 
       const genRow = document.getElementById('clientGeneralFieldsRow');
       const genAreaInput = document.getElementById('clientArea');
@@ -3866,19 +3979,8 @@
           };
         }
         if (cat === 'malls') {
-          const paid = parseFloat(document.getElementById('clientMallPaid').value) || 0;
-          const over = parseFloat(document.getElementById('clientMallOver').value) || 0;
-          subObj.mallDetails = {
-            floor: document.getElementById('clientMallFloor').value.trim(),
-            pricePerMeter: area > 0 ? Math.round(totalPrice / area) : 0,
-            paid,
-            over,
-            cashNow: paid + over,
-            remaining: Math.max(0, totalPrice - paid),
-            installmentVal: parseFloat(document.getElementById('clientMallInstallmentVal').value) || 0,
-            freq: document.getElementById('clientMallFreq').value,
-            remYears: document.getElementById('clientMallRemYears').value.trim()
-          };
+          subObj.mallDetails = mallBuildDetails('client', area, totalPrice);
+          subObj.paymentStatus = mallPaymentText(subObj.mallDetails);
         }
         if (cat === 'factories') {
           subObj.factoryDetails = {
