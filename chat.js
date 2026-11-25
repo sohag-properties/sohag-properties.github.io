@@ -212,6 +212,8 @@
   function respond(raw, phone, forceAgent) {
     var t = norm(raw), out = { text: '', cards: [], needsAgent: !!forceAgent };
     if (phone) {
+      var nm = String(raw).match(/(?:اسمي|اسمى|انا|أنا)\s+([^\d\u060C,.]{2,30}?)(?=\s+(?:و|رقم)|\s*[\u060C,.\d]|$)/);
+      if (nm) out.name = nm[1].trim();
       out.needsAgent = true;
       out.text = 'تمام، سجلت رقمك (' + phone + '). هيتواصل معاك حد من فريق الأستاذ محمد في أقرب وقت.';
       return out;
