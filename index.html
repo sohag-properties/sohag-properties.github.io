@@ -319,6 +319,9 @@
             <i class="fa-solid fa-inbox"></i> طلبات العملاء
             <span id="pendingCountBadge" class="bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full">0</span>
           </button>
+          <button type="button" onclick="switchTab('chats')" id="tab-chats" class="admin-only-btn tab-btn text-teal-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
+            <i class="fa-solid fa-comments"></i> المحادثات
+          </button>
         </div>
       </div>
 
@@ -341,6 +344,7 @@
               <button type="button" data-section-key="citymap" onclick="selectSectionFromDrawer('citymap')" class="section-managed-el bg-navy-800 hover:bg-emerald-500 hover:text-navy-950 text-emerald-300 px-3 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer"><i class="fa-solid fa-map"></i> خريطة المدينة</button>
               <button type="button" data-section-key="news" onclick="selectSectionFromDrawer('news')" class="section-managed-el bg-navy-800 hover:bg-sky-500 hover:text-navy-950 text-sky-300 px-3 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer"><i class="fa-solid fa-newspaper"></i> أخبار الجهاز</button>
               <button type="button" onclick="selectSectionFromDrawer('pending')" class="admin-only-btn bg-amber-500/20 hover:bg-amber-500 hover:text-navy-950 text-amber-300 border border-amber-400/50 px-3 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer"><i class="fa-solid fa-inbox"></i> طلبات العملاء</button>
+              <button type="button" onclick="selectSectionFromDrawer('chats')" class="admin-only-btn bg-teal-500/20 hover:bg-teal-500 hover:text-navy-950 text-teal-300 border border-teal-400/50 px-3 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer"><i class="fa-solid fa-comments"></i> المحادثات</button>
             </div>
           </div>
 
@@ -728,6 +732,32 @@
         </div>
       </div>
       <div id="pendingGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- قسم محادثات الشات مع العملاء (للإدارة فقط) -->
+    <section id="chatsSection" class="hidden space-y-4">
+      <div class="bg-teal-50 border border-teal-300 p-4 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 class="text-base font-black text-teal-950 flex items-center gap-2">
+            <i class="fa-solid fa-comments text-teal-600"></i> محادثات الشات مع العملاء
+          </h2>
+          <p class="text-xs text-teal-800 mt-0.5">كل محادثات المساعد الذكي وفريق الإدارة مع زوار التطبيق — بتتحدث تلقائياً كل ١٥ ثانية</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-1.5 text-xs font-bold text-teal-900 cursor-pointer select-none">
+            <input type="checkbox" id="chatsShowClosed" onchange="renderChatsAdmin(true)" class="w-4 h-4 accent-teal-700 cursor-pointer">
+            إظهار المغلقة والاختبارات
+          </label>
+          <button type="button" onclick="renderChatsAdmin(true)" class="bg-teal-700 hover:bg-teal-600 text-white text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-rotate"></i> تحديث
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" data-view="sessions" onclick="chatsSetView('sessions')" class="chats-subtab bg-teal-700 text-white text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer"><i class="fa-solid fa-comments"></i> المحادثات</button>
+        <button type="button" data-view="requests" onclick="chatsSetView('requests')" class="chats-subtab bg-white text-teal-800 text-xs font-black px-4 py-2 rounded-xl border border-teal-200 transition cursor-pointer"><i class="fa-solid fa-clipboard-list"></i> طلبات العملاء من الشات</button>
+      </div>
+      <div id="chatsContent" class="flex flex-col gap-3"></div>
     </section>
 
   </main>
@@ -2575,11 +2605,20 @@
     }
 
     let pendingAfterAdminLogin = false;
+    let chatsAfterAdminLogin = false;
     function openPendingRequestsEntry() {
       if (isAdminMode) {
         switchTab('pending');
       } else {
         pendingAfterAdminLogin = true;
+        handleAdminAccess();
+      }
+    }
+    function openChatsAdminEntry() {
+      if (isAdminMode) {
+        switchTab('chats');
+      } else {
+        chatsAfterAdminLogin = true;
         handleAdminAccess();
       }
     }
@@ -2601,12 +2640,14 @@
       const newsSec = document.getElementById('newsSection');
       const mapSec = document.getElementById('citymapSection');
       const pendSec = document.getElementById('pendingSection');
+      const chatsSec = document.getElementById('chatsSection');
 
       propSec.classList.add('hidden');
       filterSec.classList.add('hidden');
       newsSec.classList.add('hidden');
       if (mapSec) mapSec.classList.add('hidden');
       pendSec.classList.add('hidden');
+      if (chatsSec) chatsSec.classList.add('hidden');
 
       if (tab === 'news') {
         newsSec.classList.remove('hidden');
@@ -2621,6 +2662,12 @@
         if (!isAdminMode) { openPendingRequestsEntry(); return; }
         pendSec.classList.remove('hidden');
         renderPendingSubmissions();
+        return;
+      }
+      if (tab === 'chats') {
+        if (!isAdminMode) { openChatsAdminEntry(); return; }
+        if (chatsSec) chatsSec.classList.remove('hidden');
+        if (typeof renderChatsAdmin === 'function') renderChatsAdmin(true);
         return;
       }
 
@@ -3907,6 +3954,9 @@
       if (pendingAfterAdminLogin) {
         pendingAfterAdminLogin = false;
         switchTab('pending');
+      } else if (chatsAfterAdminLogin) {
+        chatsAfterAdminLogin = false;
+        switchTab('chats');
       } else {
         handleSearchFilter();
       }
@@ -3923,7 +3973,7 @@
       } else {
         if (btn) btn.classList.add('hidden');
         document.querySelectorAll('.admin-only-btn').forEach(el => el.classList.add('hidden'));
-        if (currentTab === 'pending') switchTab('latest');
+        if (currentTab === 'pending' || currentTab === 'chats') switchTab('latest');
       }
       applySectionVisibilityUI();
       updatePendingBadges();
@@ -4403,5 +4453,6 @@
   </script>
 
 <script src="chat.js?v=6"></script>
+<script src="admin-chats.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body></html>
