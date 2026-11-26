@@ -2984,7 +2984,7 @@
 
     function createPropertyCardHTML(item) {
       const priceStr = Number(item.totalPrice || 0).toLocaleString('ar-EG');
-      const waMsg = encodeURIComponent(`السلام عليكم، أستفسر عن العرض العقاري:\n*${item.title}*\nالموقع: ${item.location}\nالمساحة: ${item.area} م²\nالسعر: ${priceStr} ج.م`);
+      const waMsg = encodeURIComponent(`السلام عليكم، أستفسر عن العرض العقاري:\n*${item.title}*\nالموقع: ${item.location}\n${item.area ? 'المساحة: ' + item.area + ' م²\n' : ''}السعر: ${priceStr} ج.م`);
 
       let extraSpecsHTML = '';
       if (item.installments4Info) {
@@ -3130,7 +3130,7 @@
             <div class="p-4 space-y-2.5">
               <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-black">
                 <span class="bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">${item.location}</span>
-                <span class="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">${item.area} م²</span>
+                ${item.area ? `<span class="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">${item.area} م²</span>` : ''}
               </div>
 
               <h3 class="text-sm sm:text-base font-black text-navy-900 leading-snug">${item.title}</h3>
@@ -4485,7 +4485,7 @@
     function sharePropertyToFacebook(propId) {
       const item = properties.find(p => p.id === propId);
       if (!item) return;
-      const shareText = `🏢 *${item.title}*\n📍 الموقع: ${item.location}\n📐 المساحة: ${item.area} م²\n💰 السعر: ${Number(item.totalPrice).toLocaleString('ar-EG')} ج.م\n📞 سوهاج الجديدة — إدارة أ / محمد علي أبوالحمد: 01112303616`;
+      const shareText = `🏢 *${item.title}*\n📍 الموقع: ${item.location}\n${item.area ? '📐 المساحة: ' + item.area + ' م²\n' : ''}💰 السعر: ${Number(item.totalPrice).toLocaleString('ar-EG')} ج.م\n📞 سوهاج الجديدة — إدارة أ / محمد علي أبوالحمد: 01112303616`;
       copyTextFallback(shareText);
       showToast("تم نسخ تفاصيل العرض للمشاركة!");
       const shareUrl = window.location.href.startsWith('http') ? window.location.href : 'https://web.facebook.com';
