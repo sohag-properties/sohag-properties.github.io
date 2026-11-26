@@ -2445,11 +2445,19 @@
       const btn = document.getElementById('mobileNotifyBtn');
       const lbl = document.getElementById('mobileNotifyLabel');
       if (!btn || !lbl) return;
-      if ('Notification' in window && Notification.permission === 'granted') {
-        btn.classList.remove('bg-emerald-600/90');
-        btn.classList.add('bg-sky-700');
-        lbl.textContent = 'الإشعارات مفعّلة ✓';
-      }
+      const base = 'font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer text-white ';
+      const supported = ('Notification' in window);
+      const perm = supported ? Notification.permission : 'unsupported';
+      let reg = false; try { reg = localStorage.getItem('abuelhamd_push_registered') === '1'; } catch (_) {}
+      const ic = btn.querySelector('i');
+      if (perm === 'granted' && reg) { btn.className = base + 'bg-sky-700'; lbl.textContent = 'الإشعارات مفعّلة ✓'; if (ic) ic.className = 'fa-solid fa-bell'; }
+      else if (perm === 'granted') { btn.className = base + 'bg-amber-600'; lbl.textContent = 'اضغط لإكمال التفعيل'; if (ic) ic.className = 'fa-solid fa-bell'; }
+      else if (perm === 'denied') { btn.className = base + 'bg-red-600'; lbl.textContent = 'الإشعارات مقفولة، اضغط'; if (ic) ic.className = 'fa-solid fa-bell-slash'; }
+      else if (!supported) { btn.className = base + 'bg-slate-600'; lbl.textContent = 'الإشعارات غير مدعومة'; }
+      else { btn.className = base + 'bg-emerald-600/90 hover:bg-emerald-500'; lbl.textContent = 'فعّل الإشعارات'; if (ic) ic.className = 'fa-solid fa-bell'; }
+    }
+    function showNotifyHelp() {
+      alert('الإشعارات مقفولة على موبايلك.\n\nلتشغيلها:\n1) اضغط مطولًا على أيقونة التطبيق ← معلومات التطبيق ← الإشعارات ← شغّلها.\n2) أو افتح كروم ← الثلاث نقط ← الإعدادات ← إعدادات المواقع ← الإشعارات ← sohag-properties.github.io ← مسموح.\n\nلو زر الإشعارات في إعدادات التطبيق رمادي ومش بيتغيّر، افتح الموقع من كروم نفسه (مش من التطبيق) أو ثبّته من كروم ← «تثبيت التطبيق»، وفعّل الإشعارات من هناك.');
     }
 
     const PUSH_VAPID_PUBLIC = 'BEY70mHVMBWLbmpu1bdUVtI57q5ijVSbDAer2ShhBlhcgkbhn_7VouJ7NZ-qn5zo-ZhGUU5M8U2nS1czyTazObY';
@@ -2471,7 +2479,8 @@
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth })
       });
-      return (r.ok || r.status === 409) ? 'ok' : 'save-failed';
+      const okk = (r.ok || r.status === 409); if (okk) { try { localStorage.setItem('abuelhamd_push_registered', '1'); } catch (_) {} updateMobileNotifyUI(); }
+      return okk ? 'ok' : 'save-failed';
     }
     function playListingChime() {
       try {
@@ -2519,7 +2528,7 @@
       else b.classList.add('hidden');
     }
     window.addEventListener('load', () => {
-      nightDayFabSync(); initPushBanner();
+      nightDayFabSync(); initPushBanner(); updateMobileNotifyUI(); document.addEventListener('visibilitychange', () => { if (!document.hidden) updateMobileNotifyUI(); });
       new MutationObserver(nightDayFabSync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     });
     function isInstalledApp() {
@@ -2556,8 +2565,9 @@
           else showToast("تعذر حفظ الاشتراك، جرّب تاني");
         }).catch(() => showToast("تعذر تفعيل الإشعارات على الجهاز ده"));
       };
+      if (Notification.permission === 'denied') { updateMobileNotifyUI(); showNotifyHelp(); return; }
       if (Notification.permission === 'granted') { done(); return; }
-      Notification.requestPermission().then(permission => { if (permission === 'granted') done(); });
+      Notification.requestPermission().then(permission => { updateMobileNotifyUI(); if (permission === 'granted') done(); else if (permission === 'denied') showNotifyHelp(); });
     }
 
     function sendMobilePushNotification(title, body) {
