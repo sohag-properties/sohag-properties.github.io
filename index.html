@@ -935,22 +935,29 @@
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة الأقساط المتبقية (ج.م)</label>
-              <input type="number" id="adminCompRemInstallments" placeholder="0" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">مدة الأقساط</label>
-              <input type="text" id="adminCompDuration" placeholder="مثال: 4 سنوات" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-            </div>
-            <div>
               <label class="block text-[11px] font-black text-slate-700 mb-1">نظام الأقساط</label>
-              <select id="adminCompFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <select id="adminCompFreq" onchange="compSyncInst('admin')" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
                 <option value="ربع سنوي">ربع سنوي</option>
                 <option value="نصف سنوي">نصف سنوي</option>
                 <option value="سنوي">سنوي</option>
                 <option value="كاش">كاش بالكامل</option>
               </select>
             </div>
+          </div>
+          <div id="adminCompInstGroup" class=" bg-white/70 border border-indigo-200 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">المدفوع حتى الآن (ج.م)</label>
+              <input type="number" id="adminCompPaid" oninput="compSyncInst('admin')" placeholder="مثال: 600000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد (ج.م)</label>
+              <input type="number" id="adminCompInstValue" oninput="compSyncInst('admin')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المتبقية</label>
+              <input type="number" id="adminCompInstCount" oninput="compSyncInst('admin')" placeholder="مثال: 27" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div id="adminCompTotalNote" class="sm:col-span-3 text-[11px] font-black text-indigo-900"></div>
           </div>
         </div>
 
@@ -1377,21 +1384,28 @@
             </select>
           </div>
           <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة الأقساط المتبقية</label>
-            <input type="number" id="clientCompRemInstallments" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-          </div>
-          <div>
-            <label class="block text-[11px] font-black text-slate-700 mb-1">مدة الأقساط</label>
-            <input type="text" id="clientCompDuration" placeholder="مثال: 3 سنوات" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-          </div>
-          <div>
             <label class="block text-[11px] font-black text-slate-700 mb-1">نظام الأقساط</label>
-            <select id="clientCompFreq" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            <select id="clientCompFreq" onchange="compSyncInst('client')" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
               <option value="ربع سنوي">ربع سنوي</option>
               <option value="نصف سنوي">نصف سنوي</option>
               <option value="سنوي">سنوي</option>
               <option value="كاش">كاش</option>
             </select>
+          </div>
+          <div id="clientCompInstGroup" class="col-span-full bg-white/70 border border-indigo-200 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">المدفوع حتى الآن (ج.م)</label>
+              <input type="number" id="clientCompPaid" oninput="compSyncInst('client')" placeholder="مثال: 600000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد (ج.م)</label>
+              <input type="number" id="clientCompInstValue" oninput="compSyncInst('client')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المتبقية</label>
+              <input type="number" id="clientCompInstCount" oninput="compSyncInst('client')" placeholder="مثال: 27" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div id="clientCompTotalNote" class="sm:col-span-3 text-[11px] font-black text-indigo-900"></div>
           </div>
         </div>
 
@@ -2032,6 +2046,34 @@
           ]
         }
       };
+    }
+
+    function compInstFields(p) {
+      const n = id => parseFloat(document.getElementById(p + id).value) || 0;
+      const freq = document.getElementById(p + 'CompFreq').value;
+      if (freq === 'كاش') return { remInstallments: 0, duration: '' };
+      const paid = n('CompPaid'), val = n('CompInstValue'), cnt = n('CompInstCount');
+      return { paid, instValue: val, instCount: cnt, remInstallments: val * cnt, duration: cnt ? (cnt + ' قسط') : '' };
+    }
+    function compSyncInst(p) {
+      const catEl = document.getElementById(p === 'admin' ? 'propCategory' : 'clientCategory');
+      const priceEl = document.getElementById(p === 'admin' ? 'propTotalPrice' : 'clientTotalPrice');
+      const g = document.getElementById(p + 'CompInstGroup');
+      const note = document.getElementById(p + 'CompTotalNote');
+      if (!catEl || !priceEl || !g) return;
+      const inst = catEl.value === 'compounds' && document.getElementById(p + 'CompFreq').value !== 'كاش';
+      g.classList.toggle('hidden', !inst);
+      const n = id => parseFloat(document.getElementById(p + id).value) || 0;
+      const paid = n('CompPaid'), val = n('CompInstValue'), cnt = n('CompInstCount');
+      if (inst && (paid || val || cnt)) {
+        const total = paid + val * cnt;
+        priceEl.value = total; priceEl.readOnly = true; priceEl.classList.add('bg-slate-200');
+        if (note) note.textContent = 'إجمالي سعر الوحدة = المدفوع + (القسط × عدد الأقساط) = ' + total.toLocaleString('ar-EG') + ' ج.م';
+        try { if (p === 'admin') recalcAdminFinancials(); } catch (_) {}
+      } else {
+        priceEl.readOnly = false; priceEl.classList.remove('bg-slate-200');
+        if (note) note.textContent = '';
+      }
     }
 
     const DEFAULT_PROPERTIES = [
@@ -2934,8 +2976,8 @@
         const c = item.compoundDetails;
         extraSpecsHTML += `<div class="bg-indigo-50 border border-indigo-200 text-indigo-950 p-2.5 rounded-xl text-[11px] font-bold space-y-1">
           <div>عمارة: <span class="font-black">${c.building || '-'}</span> • الدور: <span class="font-black">${c.floor || '-'}</span> • الاستلام: <span class="font-black text-indigo-700">${c.delivery || '-'}</span></div>
-          <div>سعر المتر: <span class="font-black">${Number(c.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span> • النظام: <span class="font-black">${c.freq || '-'}</span></div>
-          ${c.remInstallments ? `<div>الأقساط المتبقية: <span class="font-black">${Number(c.remInstallments).toLocaleString('ar-EG')} ج.م</span> (${c.duration || ''})</div>` : ''}
+          <div>سعر المتر (من الإجمالي): <span class="font-black">${Number(c.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span> • النظام: <span class="font-black">${c.freq || '-'}</span></div>
+          ${c.instValue ? `<div>المدفوع: <span class="font-black">${Number(c.paid || 0).toLocaleString('ar-EG')} ج.م</span> • القسط: <span class="font-black">${Number(c.instValue).toLocaleString('ar-EG')} ج.م ${c.freq || ''}</span></div><div>الأقساط المتبقية: <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')} قسط</span> (${Number(c.remInstallments || 0).toLocaleString('ar-EG')} ج.م) • الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>` : c.remInstallments ? `<div>الأقساط المتبقية: <span class="font-black">${Number(c.remInstallments).toLocaleString('ar-EG')} ج.م</span> (${c.duration || ''})</div>` : ''}
         </div>`;
       }
       if (item.mallDetails) {
@@ -3165,9 +3207,11 @@
           document.getElementById('adminCompFloor').value = item.compoundDetails.floor || '';
           document.getElementById('adminCompDelivery').value = item.compoundDetails.delivery || 'فوري';
           document.getElementById('adminCompPricePerMeter').value = item.compoundDetails.pricePerMeter || '';
-          document.getElementById('adminCompRemInstallments').value = item.compoundDetails.remInstallments || '';
-          document.getElementById('adminCompDuration').value = item.compoundDetails.duration || '';
           document.getElementById('adminCompFreq').value = item.compoundDetails.freq || 'ربع سنوي';
+          document.getElementById('adminCompPaid').value = item.compoundDetails.paid || '';
+          document.getElementById('adminCompInstValue').value = item.compoundDetails.instValue || '';
+          document.getElementById('adminCompInstCount').value = item.compoundDetails.instCount || '';
+          try { compSyncInst('admin'); } catch (_) {}
         }
         if (item.mallDetails) {
           const m = item.mallDetails;
@@ -3218,6 +3262,7 @@
       subSelect.innerHTML = Object.keys(catalog[cat]).map(s => `<option value="${s}">${s}</option>`).join('');
 
       document.getElementById('adminCompoundFields').classList.toggle('hidden', cat !== 'compounds');
+      try { compSyncInst('admin'); } catch (_) {}
       document.getElementById('adminMallFields').classList.toggle('hidden', cat !== 'malls');
       document.getElementById('adminFactoryFields').classList.toggle('hidden', cat !== 'factories');
       document.getElementById('adminUnifiedApartmentSection').classList.toggle('hidden', !isApt);
@@ -3616,8 +3661,7 @@
             floor: document.getElementById('adminCompFloor').value.trim(),
             delivery: document.getElementById('adminCompDelivery').value,
             pricePerMeter: parseFloat(document.getElementById('adminCompPricePerMeter').value) || (area > 0 ? Math.round(totalPrice / area) : 0),
-            remInstallments: parseFloat(document.getElementById('adminCompRemInstallments').value) || 0,
-            duration: document.getElementById('adminCompDuration').value.trim(),
+            ...compInstFields('admin'),
             freq: document.getElementById('adminCompFreq').value
           };
         }
@@ -3755,6 +3799,7 @@
       subSelect.innerHTML = Object.keys(catalog[cat]).map(s => `<option value="${s}">${s}</option>`).join('');
 
       document.getElementById('clientCompoundFields').classList.toggle('hidden', cat !== 'compounds');
+      try { compSyncInst('client'); } catch (_) {}
       document.getElementById('clientMallFields').classList.toggle('hidden', cat !== 'malls');
       document.getElementById('clientFactoryFields').classList.toggle('hidden', cat !== 'factories');
       document.getElementById('clientUnifiedApartmentSection').classList.toggle('hidden', !isApt);
@@ -4046,8 +4091,7 @@
             floor: document.getElementById('clientCompFloor').value.trim(),
             delivery: document.getElementById('clientCompDelivery').value,
             pricePerMeter: area > 0 ? Math.round(totalPrice / area) : 0,
-            remInstallments: parseFloat(document.getElementById('clientCompRemInstallments').value) || 0,
-            duration: document.getElementById('clientCompDuration').value.trim(),
+            ...compInstFields('client'),
             freq: document.getElementById('clientCompFreq').value
           };
         }
