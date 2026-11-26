@@ -148,7 +148,7 @@
   state.haveContact = lget('sohag_chat_contact', '') === '1';
 
   /* ===== ذاكرة الجلسة: اللي البوت عرفه عن الزائر وميسألش فيه تاني ===== */
-  var known = { name: null, phone: null, need: null, needLabel: null, budget: null, area: null, loc: null, interest: null, claimed: false };
+  var known = { name: null, phone: null, need: null, needLabel: null, budget: null, area: null, loc: null, interest: null, claimed: false, clarified: null };
   try {
     var _k = JSON.parse(lget('sohag_chat_known', '{}')) || {};
     for (var _kk in known) if (_k[_kk] != null) known[_kk] = _k[_kk];
@@ -339,7 +339,9 @@
       return out;
     }
 
+    var KW = { lands: 'ارض', compounds: 'كمبوند', apartments: 'شقه', houses: 'فيلا', malls: 'محل', factories: 'مصنع' };
     var q = search(raw);
+    if (!q.cat && known.need && known.clarified === known.need && KW[known.need]) q = search(raw + ' ' + KW[known.need]);
     /* نحدث ذاكرة الجلسة بأي معلومة جديدة */
     var nm2 = detectName(raw);
     if (nm2 && !known.name) known.name = nm2;
@@ -349,7 +351,29 @@
     if (q.loc && !known.loc) known.loc = q.loc;
     saveKnown();
 
-    var intent = q.cat || q.budget || q.area || q.loc || /(ابحث|عايز|عاوز|محتاج|ابغي|اريد|اشتري|للبيع|ايجار|مطلوب)/.test(t);
+    /* طلب مختصر (نوع العقار بس): نسأل الأول عن المنطقة والمساحة/الغرف والميزانية ونعرض المتاح، ومنطلبش الاسم والرقم دلوقتي */
+    var raw1 = norm(raw);
+    if (q.cat && !parseBudget(raw1) && !parseArea(raw1) && !parseLoc(raw1) && known.clarified !== q.cat[0] && !/(غرف|اوض|اوضه)/.test(raw1)) {
+      var QS = {
+        apartments: 'تحب الشقة في أنهي مجاورة أو منطقة؟ وكام غرفة والمساحة تقريباً؟ وميزانيتك تقريباً كام؟',
+        malls: 'المحل في أنهي منطقة؟ والمساحة تقريباً كام؟ وميزانيتك تقريباً كام؟',
+        lands: 'الأرض في أنهي مجاورة؟ والمساحة اللي عايزها كام؟ وميزانيتك تقريباً كام؟',
+        compounds: 'تحب الوحدة في أنهي كمبوند أو منطقة؟ وكام غرفة؟ وميزانيتك تقريباً كام؟',
+        houses: 'تحب المنزل أو الفيلا في أنهي منطقة؟ والمساحة وعدد الغرف تقريباً؟ وميزانيتك كام؟',
+        factories: 'المصنع أو المخزن في أنهي منطقة؟ والمساحة تقريباً؟ وميزانيتك تقريباً كام؟'
+      };
+      known.clarified = q.cat[0]; saveKnown(); setUnclear(0);
+      out.needsAgent = false;
+      if (q.results.length) {
+        out.cards = q.results.slice(0, 3).map(cardData);
+        out.text = 'أهلاً بيك يا فندم 👋 دي ' + (q.results.length > 1 ? 'أول عروض' : 'العرض') + ' ' + q.cat[1] + ' المتاحة عندنا حالياً' + (q.results.length > 3 ? ' (' + q.results.length + ' عرض، دي أول ٣)' : '') + '.\nعلشان أرشحلك الأنسب: ' + (QS[q.cat[0]] || 'قولي المنطقة والمساحة وميزانيتك تقريباً.');
+      } else {
+        out.text = 'أهلاً بيك يا فندم 👋 ' + 'علشان أدورلك على الأنسب: ' + (QS[q.cat[0]] || 'قولي المنطقة والمساحة وميزانيتك تقريباً.') + '\n(مفيش عرض ' + q.cat[1] + ' متاح دلوقتي، بس قولي طلبك وأنا أسجله وهندور لك عليه.)';
+      }
+      return out;
+    }
+
+    var intent = q.cat || q.budget || q.area || q.loc || /(غرف|اوض|اوضه)/.test(t) || /(ابحث|عايز|عاوز|محتاج|ابغي|اريد|اشتري|للبيع|ايجار|مطلوب)/.test(t);
     if (!intent) {
       out.needsAgent = true;
       /* أي رسالة مش واضحة والجلسة ليها سياق: تحويل للفريق من غير ما نرجع نسأل من الأول */
