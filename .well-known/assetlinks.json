@@ -1,8 +1,15 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "io.github.sohag_properties.twa",
-        "sha256_cert_fingerprints": ["EA:C5:7B:96:38:FD:1D:7B:3C:35:B9:98:05:D7:92:94:7A:ED:B9:DA:AB:A2:6C:E3:F8:87:F1:DE:30:44:EB:BD"]
-      }
-    }]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.sohag_properties.twa",
+      "sha256_cert_fingerprints": [
+        "EA:C5:7B:96:38:FD:1D:7B:3C:35:B9:98:05:D7:92:94:7A:ED:B9:DA:AB:A2:6C:E3:F8:87:F1:DE:30:44:EB:BD",
+        "16:E7:2F:7C:4B:2A:EE:94:85:03:05:9A:3A:A3:82:5B:5D:AB:94:A0:7A:03:D2:78:64:F5:DE:8B:51:BD:25:85"
+      ]
+    }
+  }
+]
