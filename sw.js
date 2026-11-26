@@ -1,5 +1,5 @@
-const CACHE='sohag-v38';
-const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='sohag-v39';
+const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./badge-96.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
@@ -18,7 +18,7 @@ self.addEventListener('push',e=>{
   e.waitUntil((async()=>{
     const cl=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     cl.forEach(c=>c.postMessage({type:'new-listing',body:d.body}));
-    await self.registration.showNotification(title,{body:d.body||'',icon:'./icon-192.png',badge:'./icon-192.png',dir:'rtl',lang:'ar',tag:d.tag||'listing',renotify:true,vibrate:[120,80,120,80,260],requireInteraction:false,data:{url:d.url||'./'}});
+    await self.registration.showNotification(title,{body:d.body||'',icon:'./icon-192.png',badge:'./badge-96.png',dir:'rtl',lang:'ar',tag:d.tag||'listing',renotify:true,vibrate:[120,80,120,80,260],requireInteraction:false,data:{url:d.url||'./'}});
   })());
 });
 self.addEventListener('notificationclick',e=>{
