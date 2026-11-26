@@ -2518,14 +2518,13 @@
           if (!('Notification' in window)) return;
           if (!isInstalledApp()) return;
           if (Notification.permission === 'default') {
-            // طلب الإذن تلقائيًا أول ما التطبيق يتفتح، ولو المتصفح محتاج لمسة نعيده عند أول لمسة
+            // طلب الإذن عند أول لمسة بعد فتح التطبيق (كروم بيحجب الطلب التلقائي من غير لمسة)
             const go = () => { if (Notification.permission === 'default') requestMobileNotifications(); };
-            setTimeout(go, 1500);
             const once = () => { document.removeEventListener('pointerdown', once, true); setTimeout(go, 300); };
             document.addEventListener('pointerdown', once, true);
           } else if (Notification.permission === 'denied') {
             const b = document.getElementById('pushBanner');
-            if (b) { const sp = b.querySelector('span'); if (sp) sp.innerHTML = '<i class="fa-solid fa-bell-slash"></i> الإشعارات متقفلة على موبايلك. افتح إعدادات التطبيق ← الإشعارات وفعّلها عشان توصلك العروض الجديدة'; const bt = b.querySelectorAll('button'); bt.forEach(x => x.classList.add('hidden')); b.classList.remove('hidden'); }
+            if (b) { const sp = b.querySelector('span'); if (sp) sp.innerHTML = '<i class="fa-solid fa-bell-slash"></i> الإشعارات متقفلة على موبايلك. اضغط مطولًا على أيقونة التطبيق ← معلومات التطبيق ← الإشعارات (أو إعدادات كروم ← إعدادات الموقع ← الإشعارات) وفعّلها'; const bt = b.querySelectorAll('button'); bt.forEach(x => x.classList.add('hidden')); b.classList.remove('hidden'); }
           }
         } catch (_) {}
       });
