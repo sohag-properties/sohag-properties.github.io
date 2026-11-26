@@ -4885,4 +4885,21 @@
 <script src="chat.js?v=7"></script>
 <script src="admin-chats.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script>
+(function(){try{
+var ss=window.sessionStorage;
+if(location.search.indexOf('app=2')>-1) ss.setItem('sp_app2','1');
+if(String(document.referrer).indexOf('android-app://io.github.sohag_properties.twa')===0) ss.setItem('sp_twa','1');
+if(ss.getItem('sp_twa')!=='1'||ss.getItem('sp_app2')==='1'||ss.getItem('sp_upd_later')==='1') return;
+function show(){
+var d=document.createElement('div');
+d.id='oldApkUpdate';d.setAttribute('dir','rtl');
+d.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit';
+d.innerHTML='<div style="background:#fff;color:#0f172a;max-width:380px;width:100%;border-radius:20px;padding:20px;text-align:center;line-height:1.8"><div style="font-size:20px;font-weight:900;color:#0f766e;margin-bottom:6px">تحديث جديد للتطبيق</div><div style="font-size:14px;font-weight:700">النسخة اللي عندك قديمة ومش بتوصّلك الإشعارات. اعمل كده مرة واحدة:</div><div style="text-align:right;font-size:13px;margin:10px 0;background:#f1f5f9;border-radius:12px;padding:10px">١. امسح التطبيق القديم من الموبايل.<br>٢. دوس على «تحميل النسخة الجديدة» تحت.<br>٣. نزّل التطبيق وافتحه واسمح بالإشعارات.</div><a href="/download/" target="_blank" rel="noopener" style="display:block;background:#0f766e;color:#fff;font-weight:900;border-radius:12px;padding:12px;text-decoration:none;margin-bottom:8px">تحميل النسخة الجديدة</a><button type="button" id="oldApkLater" style="background:none;border:0;color:#64748b;font-weight:700;padding:6px;font-size:13px">لاحقًا</button></div>';
+document.body.appendChild(d);
+document.getElementById('oldApkLater').onclick=function(){ss.setItem('sp_upd_later','1');d.remove();};
+}
+if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
+}catch(e){}})();
+</script>
 </body></html>
