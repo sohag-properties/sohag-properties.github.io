@@ -184,6 +184,14 @@
   </button>
 
   <!-- ==================== 2. الهيدر الرئيسي ==================== -->
+  <div id="appDlBanner" class="hidden bg-gold-500 text-navy-900 border-b border-gold-600">
+    <div class="max-w-7xl mx-auto px-3 py-2 flex items-center justify-between gap-2 text-xs sm:text-sm font-black">
+      <a href="./download/" class="flex items-center gap-2 flex-1 min-w-0"><i class="fa-solid fa-mobile-screen-button"></i><span class="truncate">حمّل تطبيق سوهاج الجديدة وتابع كل العروض أول بأول</span></a>
+      <a href="./download/" class="bg-navy-900 text-gold-400 px-3 py-1 rounded-lg whitespace-nowrap">حمّل التطبيق</a>
+      <button type="button" aria-label="إغلاق" onclick="try{localStorage.setItem('appDlBannerHide',String(Date.now()))}catch(e){};document.getElementById('appDlBanner').classList.add('hidden')" class="text-navy-900/70 text-lg leading-none px-1">&times;</button>
+    </div>
+  </div>
+  <script>(function(){try{var standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone||/;\s*wv\)/i.test(navigator.userAgent)||document.referrer.indexOf('android-app://')===0;var h=+localStorage.getItem('appDlBannerHide')||0;if(!standalone&&Date.now()-h>7*864e5){document.getElementById('appDlBanner').classList.remove('hidden');}}catch(e){}})();</script>
   <header class="bg-navy-900 text-white shadow-xl border-b-2 border-gold-500">
     <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
       <!-- الشعار والاسم (5 ضغطات متتالية لفتح لوحة الإدارة) -->
