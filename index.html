@@ -2387,22 +2387,58 @@
       }
     }
 
+    const PUSH_VAPID_PUBLIC = 'BEY70mHVMBWLbmpu1bdUVtI57q5ijVSbDAer2ShhBlhcgkbhn_7VouJ7NZ-qn5zo-ZhGUU5M8U2nS1czyTazObY';
+    function pushB64ToU8(b64) {
+      const pad = '='.repeat((4 - b64.length % 4) % 4);
+      const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+    }
+    async function syncPushSubscription(forcePrompt) {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: pushB64ToU8(PUSH_VAPID_PUBLIC) });
+      }
+      const j = sub.toJSON();
+      const r = await fetch(SUPABASE_URL + '/rest/v1/push_subscriptions', {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' },
+        body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth })
+      });
+      return r.ok ? 'ok' : 'save-failed';
+    }
+    function playListingChime() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        const ctx = new AC(); const t0 = ctx.currentTime;
+        [[784, 0], [988, 0.14], [1319, 0.28], [1568, 0.46]].forEach(([f, d]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.0001, t0 + d); g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.5);
+          o.start(t0 + d); o.stop(t0 + d + 0.55);
+        });
+      } catch (_) {}
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'new-listing') { playListingChime(); try { showToast('🏠 ' + (e.data.body || 'عرض جديد')); } catch (_) {} } });
+      window.addEventListener('load', () => { if ('Notification' in window && Notification.permission === 'granted') syncPushSubscription().catch(() => {}); });
+    }
     function requestMobileNotifications() {
       if (!('Notification' in window)) {
         showToast("متصفحك لا يدعم إشعارات النظام");
         return;
       }
-      if (Notification.permission === 'granted') {
-        sendMobilePushNotification("سوهاج الجديدة — أ / محمد علي أبوالحمد", "إشعارات التحديثات مفعّلة بنجاح!");
-        return;
-      }
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          updateMobileNotifyUI();
-          sendMobilePushNotification("سوهاج الجديدة", "تم تفعيل الإشعارات الفورية للعروض والأخبار.");
-          showToast("تم تفعيل إشعارات الموبايل بنجاح!");
-        }
-      });
+      const done = () => {
+        updateMobileNotifyUI();
+        syncPushSubscription(true).then(r => {
+          if (r === 'ok') { playListingChime(); showToast("تم تفعيل إشعارات العروض الجديدة ✓ هتوصلك حتى لو التطبيق مقفول"); }
+          else if (r === 'unsupported') showToast("جهازك مش بيدعم الإشعارات والتطبيق مقفول، هتوصلك وهو مفتوح بس");
+          else showToast("تعذر حفظ الاشتراك، جرّب تاني");
+        }).catch(() => showToast("تعذر تفعيل الإشعارات على الجهاز ده"));
+      };
+      if (Notification.permission === 'granted') { done(); return; }
+      Notification.requestPermission().then(permission => { if (permission === 'granted') done(); });
     }
 
     function sendMobilePushNotification(title, body) {
