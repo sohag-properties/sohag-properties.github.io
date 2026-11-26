@@ -163,10 +163,25 @@
       </div>
       <button type="button" id="mobileNotifyBtn" onclick="requestMobileNotifications()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
         <i class="fa-solid fa-bell"></i>
-        <span id="mobileNotifyLabel" class="hidden sm:inline">إشعارات الموبايل</span>
+        <span id="mobileNotifyLabel">إشعارات الموبايل</span>
       </button>
     </div>
   </div>
+
+  <div id="pushBanner" class="hidden bg-emerald-700 text-white text-xs font-black">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2">
+      <span><i class="fa-solid fa-bell"></i> فعّل إشعارات العروض الجديدة عشان توصلك فورًا على موبايلك</span>
+      <span class="flex items-center gap-1.5 shrink-0">
+        <button type="button" onclick="requestMobileNotifications()" class="bg-gold-500 text-navy-950 px-3 py-1 rounded-lg font-black cursor-pointer">تفعيل</button>
+        <button type="button" onclick="dismissPushBanner()" class="px-2 py-1 rounded-lg bg-black/20 cursor-pointer">لاحقًا</button>
+      </span>
+    </div>
+  </div>
+
+  <!-- زر الوضع الليلي/النهاري الثابت (منفصل عن أيقونة الألوان) -->
+  <button type="button" id="nightDayFab" onclick="toggleNightDayFab()" title="الوضع الليلي / النهاري" aria-label="الوضع الليلي / النهاري" style="position:fixed;bottom:16px;right:16px;width:46px;height:46px;z-index:45;border-radius:9999px;background:#0f1f35;color:#facc15;border:2px solid #eab308;box-shadow:0 6px 16px rgba(0,0,0,.35);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+    <i id="nightDayFabIcon" class="fa-solid fa-moon"></i>
+  </button>
 
   <!-- ==================== 2. الهيدر الرئيسي ==================== -->
   <header class="bg-navy-900 text-white shadow-xl border-b-2 border-gold-500">
@@ -2448,13 +2463,46 @@
       navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'new-listing') { playListingChime(); try { showToast('🏠 ' + (e.data.body || 'عرض جديد')); } catch (_) {} } });
       window.addEventListener('load', () => { if ('Notification' in window && Notification.permission === 'granted') syncPushSubscription().catch(() => {}); });
     }
+    function nightDayFabSync() {
+      const ic = document.getElementById('nightDayFabIcon'); if (!ic) return;
+      const dark = document.body.classList.contains('dark-mode');
+      ic.className = dark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+      const b = document.getElementById('nightDayFab'); if (b) b.title = dark ? 'التحويل للوضع النهاري' : 'التحويل للوضع الليلي';
+    }
+    function toggleNightDayFab() {
+      const dark = document.body.classList.contains('dark-mode');
+      if (!dark) {
+        const cur = localStorage.getItem('abuelhamd_app_theme');
+        localStorage.setItem('abuelhamd_night_prev', (cur && cur !== 'dark') ? cur : 'light');
+        applyAppTheme('dark');
+        localStorage.setItem('abuelhamd_dark_mode', 'true');
+      } else {
+        applyAppTheme(localStorage.getItem('abuelhamd_night_prev') || 'light');
+        localStorage.setItem('abuelhamd_dark_mode', 'false');
+      }
+      nightDayFabSync();
+    }
+    function dismissPushBanner() {
+      localStorage.setItem('abuelhamd_push_banner_off', String(Date.now()));
+      const b = document.getElementById('pushBanner'); if (b) b.classList.add('hidden');
+    }
+    function initPushBanner() {
+      const b = document.getElementById('pushBanner'); if (!b) return;
+      const off = Number(localStorage.getItem('abuelhamd_push_banner_off') || 0);
+      if ('Notification' in window && Notification.permission === 'default' && Date.now() - off > 6 * 3600 * 1000) b.classList.remove('hidden');
+      else b.classList.add('hidden');
+    }
+    window.addEventListener('load', () => {
+      nightDayFabSync(); initPushBanner();
+      new MutationObserver(nightDayFabSync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    });
     function requestMobileNotifications() {
       if (!('Notification' in window)) {
         showToast("متصفحك لا يدعم إشعارات النظام");
         return;
       }
       const done = () => {
-        updateMobileNotifyUI();
+        updateMobileNotifyUI(); initPushBanner();
         syncPushSubscription(true).then(r => {
           if (r === 'ok') { playListingChime(); showToast("تم تفعيل إشعارات العروض الجديدة ✓ هتوصلك حتى لو التطبيق مقفول"); }
           else if (r === 'unsupported') showToast("جهازك مش بيدعم الإشعارات والتطبيق مقفول، هتوصلك وهو مفتوح بس");
