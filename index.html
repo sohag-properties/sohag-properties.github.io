@@ -270,6 +270,11 @@
           <i class="fa-solid fa-store text-gold-400"></i>
         </button>
 
+        <button type="button" onclick="showCloudLogin()" class="admin-only-btn bg-sky-700 hover:bg-sky-600 border border-sky-400/50 text-white text-xs font-bold px-2.5 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-cloud text-sky-200"></i>
+          <span class="hidden md:inline">ربط السحابة</span>
+        </button>
+
         <button type="button" onclick="openAdminsManager()" class="admin-only-btn bg-amber-500/20 hover:bg-amber-500/30 border border-gold-500/50 text-gold-300 text-xs font-bold px-2.5 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer" title="المشرفين والتقارير">
           <i class="fa-solid fa-users-gear text-gold-400"></i>
         </button>
@@ -2317,6 +2322,15 @@
       }
     ];
 
+    const ADMIN_PIN_KDF = { salt: 'c4a82004c7718bd0d32edd637f10d2a8', hash: 'db5f5db03f319618f4f8498abab111e37b358063f2f27d0c53629eb2858a48de', iter: 200000 };
+    function adminHexToU8(h) { return Uint8Array.from(h.match(/../g).map(x => parseInt(x, 16))); }
+    async function adminPinDerive(pin, saltHex, iter) {
+      const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: adminHexToU8(saltHex), iterations: iter }, key, 256);
+      return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    function adminPinStored() { try { return JSON.parse(localStorage.getItem('abuelhamd_pin_kdf') || 'null') || ADMIN_PIN_KDF; } catch (_) { return ADMIN_PIN_KDF; } }
+    async function adminOwnerPinOk(pin) { const k = adminPinStored(); return (await adminPinDerive(pin, k.salt, k.iter)) === k.hash; }
     const DEFAULT_ADMINS = [
       { id: 'admin-owner', name: 'أ / محمد علي أبوالحمد', role: 'مدير المكتب (المالك)', isOwner: true }
     ];
@@ -2640,7 +2654,6 @@
         await cloudPullAll();
         await cloudFlushAll();
         showToast('تم الدخول للسحابة ✓ الحفظ والموافقات بقت على السيرفر');
-        if (adminAfterCloud) { adminAfterCloud = false; enterAdminFromCloud(); }
       } catch (e) { err.textContent = 'كلمة السر غير صحيحة'; err.classList.remove('hidden'); }
     }
     async function cloudPullAll() {
@@ -4298,19 +4311,16 @@
         handleSearchFilter();
         showToast('تم تسجيل الخروج من لوحة الإدارة');
       } else {
-        /* الدخول للإدارة بحساب السحابة الحقيقي فقط (لا يوجد كود سري في الصفحة) */
-        (async () => {
-          let ok = false;
-          try { ok = cloudHasSession() && !!(await cloudToken()); } catch (_) { ok = false; }
-          if (ok) enterAdminFromCloud();
-          else { adminAfterCloud = true; showCloudLogin(); }
-        })();
+        document.getElementById('adminPinInput').value = '';
+        document.getElementById('adminLoginModal').classList.remove('hidden');
+        document.getElementById('adminLoginModal').classList.add('flex');
+        setTimeout(() => document.getElementById('adminPinInput').focus(), 100);
       }
     }
     let adminAfterCloud = false;
-    function enterAdminFromCloud() {
+    function enterAdminFromCloud(u) {
       isAdminMode = true;
-      currentAdminUser = (adminAccounts && adminAccounts[0]) || { id: 'admin-owner', name: 'أ / محمد علي أبوالحمد', role: 'مدير المكتب (المالك)', isOwner: true };
+      currentAdminUser = u || (adminAccounts && adminAccounts[0]) || { id: 'admin-owner', name: 'أ / محمد علي أبوالحمد', role: 'مدير المكتب (المالك)', isOwner: true };
       closeAdminLoginModal();
       logAdminAction('تسجيل دخول', 'تفعيل صلاحيات الإدارة');
       applyViewModeUI();
@@ -4325,7 +4335,19 @@
       document.getElementById('adminLoginModal').classList.remove('flex');
     }
 
-    function verifyAdminPin() { closeAdminLoginModal(); handleAdminAccess(); }
+    async function verifyAdminPin() {
+      const entered = document.getElementById('adminPinInput').value.trim();
+      let matched = null;
+      try {
+        if (entered && await adminOwnerPinOk(entered)) matched = (adminAccounts || []).find(a => a.isOwner) || { id: 'admin-owner', name: 'أ / محمد علي أبوالحمد', role: 'مدير المكتب (المالك)', isOwner: true };
+        else if (entered) matched = (adminAccounts || []).find(a => a.pin && a.pin === entered) || null;
+      } catch (_) {}
+      if (!matched) { showToast('الكود السري غير صحيح!'); document.getElementById('adminPinInput').value = ''; return; }
+      enterAdminFromCloud(matched);
+      let linked = false;
+      try { linked = cloudHasSession() && !!(await cloudToken()); } catch (_) {}
+      if (!linked) showToast('اضغط «ربط السحابة» في أعلى الصفحة عشان الحفظ والموافقات تروح للسيرفر');
+    }
 
     function applyViewModeUI() {
       const btn = document.getElementById('viewModeToggleBtn');
@@ -4451,7 +4473,9 @@
       const newPin = newInput.value.trim();
 
       if (!oldPin) { showToast("يجب إدخال كلمة السر القديمة أولاً!"); return; }
-      if (oldPin !== adminAccounts[idx].pin) { showToast("كلمة السر القديمة غير صحيحة!"); oldInput.value = ''; return; }
+      const adm = adminAccounts[idx];
+      if (adm.pin) { if (oldPin !== adm.pin) { showToast("كلمة السر القديمة غير صحيحة!"); oldInput.value = ''; return; } }
+      else { adminOwnerPinOk(oldPin).then(ok => { if (!ok) { showToast("كلمة السر القديمة غير صحيحة!"); oldInput.value = ''; return; } if (!/^[0-9]{7}$/.test(newPin)) { showToast("يجب أن تتكون كلمة السر الجديدة من 7 أرقام بالضبط!"); return; } const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join(''); adminPinDerive(newPin, salt, 200000).then(hh => { localStorage.setItem('abuelhamd_pin_kdf', JSON.stringify({ salt, hash: hh, iter: 200000 })); oldInput.value = ''; newInput.value = ''; logAdminAction('تغيير كلمة السر', 'تحديث كلمة سر المالك'); showToast('تم تغيير كلمة السر بنجاح'); }); }); return; }
       if (!/^[0-9]{7}$/.test(newPin)) { showToast("يجب أن تتكون كلمة السر الجديدة من 7 أرقام بالضبط!"); return; }
 
       adminAccounts[idx].pin = newPin;
