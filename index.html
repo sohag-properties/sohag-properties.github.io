@@ -3247,6 +3247,7 @@
               </div>
 
               <h3 class="text-sm sm:text-base font-black text-navy-900 leading-snug">${item.title}</h3>
+              ${item.createdAt ? `<div class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i class="fa-regular fa-clock text-slate-400"></i><span>تاريخ النشر: ${fmtPostedAt(item.createdAt)}</span></div>` : ''}
 
               <div class="flex items-baseline justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
                 <span class="text-[11px] font-bold text-slate-500">السعر المطلوب</span>
@@ -4101,6 +4102,14 @@
       return sched;
     }
 
+    function fmtPostedAt(ms) {
+      try {
+        const d = new Date(Number(ms)); if (isNaN(d)) return '';
+        const date = new Intl.DateTimeFormat('ar-EG', { timeZone: 'Africa/Cairo', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+        const time = new Intl.DateTimeFormat('ar-EG', { timeZone: 'Africa/Cairo', hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+        return date + ' - ' + time;
+      } catch (_) { return ''; }
+    }
     // قواعد النشر: لا عرض بدون سعر وصورة وبيانات واضحة
     function listingProblems(o, isClient) {
       const bad = [];
