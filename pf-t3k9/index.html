@@ -7,59 +7,72 @@
 <title>موقع القطعة - نسخة تجريبية</title>
 <style>
 body{margin:0;font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:#0f2540;color:#0f172a}
-.w{max-width:520px;margin:0 auto;padding:16px}
-h1{color:#e6b84c;font-size:18px;margin:8px 0 4px}
-.sub{color:#cbd5e1;font-size:12px;margin-bottom:12px}
-.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:10px}
-label{display:block;font-size:12px;font-weight:800;margin:8px 0 4px}
-input,select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:12px;font-size:15px;font-weight:700}
-button.go{width:100%;margin-top:10px;background:#e6b84c;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:15px;color:#0f2540}
-.r{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #e2e8f0;padding:10px 0;font-size:13px;font-weight:700}
-.r:first-child{border-top:0}
-.r a{background:#15803d;color:#fff;text-decoration:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:900;white-space:nowrap}
-.n{font-size:11px;color:#475569;font-weight:600}
+.w{max-width:520px;margin:0 auto;padding:14px}
+h1{color:#e6b84c;font-size:17px;margin:6px 0 2px}
+.sub{color:#cbd5e1;font-size:12px;margin-bottom:10px}
+.crumb{color:#e6b84c;font-size:12px;font-weight:800;margin:6px 0}
+.back{background:none;border:1px solid #e6b84c;color:#e6b84c;border-radius:10px;padding:6px 12px;font-weight:800;font-size:12px;cursor:pointer;margin-bottom:8px}
+.card{background:#fff;border-radius:16px;padding:12px;margin-bottom:10px}
+.it{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;background:#fff;border:0;border-radius:14px;padding:14px;margin-bottom:8px;font-size:15px;font-weight:800;color:#0f2540;text-align:right;cursor:pointer;font-family:inherit}
+.it.pd{background:#e2e8f0;color:#64748b}
+.it small{font-size:11px;font-weight:700;color:#475569;margin-right:8px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.pl{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:10px 0;text-align:center;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;color:#0f2540}
+.pl.pd{background:#fef3c7;border-color:#f59e0b;color:#78350f}
+input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:12px;font-size:15px;font-weight:700;margin-bottom:8px;font-family:inherit}
+.btn{display:block;text-align:center;background:#15803d;color:#fff;text-decoration:none;border-radius:12px;padding:13px;font-weight:900;font-size:14px;margin-top:8px}
+.btn.b2{background:#1d4ed8}
 .warn{background:#fef3c7;border:1px solid #f59e0b;color:#78350f;font-size:11.5px;font-weight:700;border-radius:12px;padding:10px;margin-top:8px}
+.n{font-size:12px;color:#475569;font-weight:700;margin:4px 0}
+.big{font-size:22px;font-weight:900;color:#0f2540}
 </style>
 </head>
 <body>
 <div class="w">
-<h1>موقع القطعة على خرائط جوجل (نسخة تجريبية)</h1>
-<div class="sub">اكتب رقم القطعة لتظهر لك كل القطع بهذا الرقم في المدينة، واختر الأقرب لمنطقتك.</div>
-<div class="card">
-<label for="n">رقم القطعة</label>
-<input id="n" type="number" inputmode="numeric" placeholder="مثال: 151">
-<label for="lm">رتّب حسب الأقرب إلى</label>
-<select id="lm"></select>
-<button class="go" onclick="go()">ابحث</button>
-<div class="warn">الموقع تقريبي. الخطأ المتوقع نحو ٢٠ متر قرب وسط المدينة وقد يزيد في الأطراف. لا يُغني عن المعاينة على الطبيعة.</div>
-</div>
-<div id="out"></div>
+<h1>موقع القطعة (نسخة تجريبية)</h1>
+<div class="sub">اختر القسم ثم القسم الفرعي ثم المنطقة، ثم القطعة لتفتح موقعها في الخرائط.</div>
+<div id="app"></div>
 </div>
 <script>
-var D=null;
-function d2(a,b){var x=(a[0]-b[0])*110950,y=(a[1]-b[1])*99400;return Math.sqrt(x*x+y*y);}
-fetch('data.json').then(function(r){return r.json();}).then(function(j){
-  D=j; var s=document.getElementById('lm'); s.innerHTML='<option value="">بدون ترتيب</option>';
-  Object.keys(j.lm).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=k;s.appendChild(o);});
-  var q=new URLSearchParams(location.search).get('n'); if(q){document.getElementById('n').value=q;go();}
-});
-function go(){
-  if(!D) return;
-  var n=String(parseInt(document.getElementById('n').value,10));
-  var out=document.getElementById('out'); var list=(D.p[n]||[]).slice();
-  var lm=document.getElementById('lm').value, ref=lm?D.lm[lm]:null;
-  if(!list.length){out.innerHTML='<div class="card n">لا توجد قطعة بهذا الرقم في الخريطة.</div>';return;}
-  list=list.map(function(p){return {p:p,d:ref?d2(p,ref):0};});
-  if(ref) list.sort(function(a,b){return a.d-b.d;}); else list.sort(function(a,b){return a.p[2]-b.p[2];});
-  var h='<div class="card"><div class="n">'+list.length+' نتيجة للرقم '+n+(ref?' (الأقرب إلى '+lm+' أولاً)':'')+'</div>';
-  list.slice(0,40).forEach(function(x,i){
-    var p=x.p; var url='https://www.google.com/maps?q='+p[0]+','+p[1];
-    h+='<div class="r"><div>'+D.h[p[2]]+(ref?'<div class="n">يبعد '+(x.d>=1000?(x.d/1000).toFixed(1)+' كم':Math.round(x.d)+' م')+' عن '+lm+'</div>':'')+'</div><a href="'+url+'" target="_blank" rel="noopener">افتح في الخريطة</a></div>';
-  });
-  if(list.length>40) h+='<div class="n">يُعرض أقرب ٤٠ نتيجة فقط. اختر مكاناً للترتيب.</div>';
-  out.innerHTML=h+'</div>';
+var T=null,st=[];
+fetch('data.json').then(function(r){return r.json();}).then(function(j){T=j.t;draw();});
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function go(i){st.push(i);draw();}
+function back(){st.pop();draw();}
+function lvl(){return st.length;}
+function draw(){
+  var a=document.getElementById('app'),h='',sec=T[st[0]],sub=sec&&sec.s[st[1]],lc=sub&&sub.l[st[2]];
+  var crumb=[];if(sec)crumb.push(sec.n);if(sub)crumb.push(sub.n);if(lc)crumb.push(lc.n);
+  if(st.length){h+='<button class="back" onclick="back()">رجوع</button><div class="crumb">'+esc(crumb.join(' / '))+'</div>';}
+  if(!sec){T.forEach(function(s,i){h+='<button class="it" onclick="go('+i+')">'+esc(s.n)+'</button>';});}
+  else if(!sub){sec.s.forEach(function(s,i){h+='<button class="it" onclick="go('+i+')">'+esc(s.n)+'</button>';});}
+  else if(!lc){sub.l.forEach(function(l,i){var pd=!!l.pending;h+='<button class="it'+(pd?' pd':'')+'" onclick="go('+i+')">'+esc(l.n)+'<small>'+(pd?'قيد الاستكمال':(l.p?l.p.length+' قطعة':'موقع'))+'</small></button>';});}
+  else if(st.length===3){
+    if(lc.pending){h+='<div class="card"><div class="big">'+esc(lc.n)+'</div><div class="warn">'+esc(lc.pending)+'</div></div>';}
+    else if(lc.pt){h+=card(lc.n,lc.pt[0],lc.pt[1],null);}
+    else{
+      h+='<div class="card"><input id="q" type="number" inputmode="numeric" placeholder="ابحث برقم القطعة" oninput="flt()"><div id="g" class="grid"></div>';
+      if(lc.note)h+='<div class="warn">'+esc(lc.note)+'</div>';
+      h+='</div>';
+    }
+    a.innerHTML=h;if(lc.p)flt();return;
+  } else {
+    var p=lc.p[st[3]];h+=card('القطعة '+p[0],p[1],p[2],null);
+  }
+  a.innerHTML=h;
 }
-document.getElementById('n').addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+function card(t,la,lo){
+  return '<div class="card"><div class="big">'+esc(t)+'</div>'
+  +'<a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps?q='+la+','+lo+'">افتح الموقع في الخرائط</a>'
+  +'<a class="btn b2" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+la+','+lo+'">ابدأ الملاحة</a>'
+  +'<div class="warn">الموقع تقريبي. الخطأ المتوقع نحو ٢٠ متر وقد يزيد في الأطراف. لا يُغني عن المعاينة على الطبيعة.</div></div>';
+}
+function flt(){
+  var lc=T[st[0]].s[st[1]].l[st[2]],q=(document.getElementById('q')||{}).value||'',g=document.getElementById('g'),h='';
+  lc.p.forEach(function(p,i){if(!q||String(p[0]).indexOf(q)===0)h+='<button class="pl" onclick="go('+i+')">'+p[0]+'</button>';});
+  if(lc.pn){Object.keys(lc.pn).forEach(function(k){if(!q||k.indexOf(q)===0)h+='<button class="pl pd" onclick="alert(\''+k+': '+lc.pn[k].replace(/\'/g,'')+'\')">'+k+'</button>';});}
+  g.innerHTML=h||'<div class="n">لا توجد قطعة بهذا الرقم.</div>';
+}
 </script>
 </body>
 </html>
