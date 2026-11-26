@@ -17,8 +17,17 @@
   }
   function rpc(name, args) {
     var c = client(); if (!c) return Promise.resolve({ error: 'no client' });
-    args = args || {}; args.p_token = ADMIN_READ_TOKEN;
-    return c.rpc(name, args).then(function (r) { if (r.error) console.warn('admin rpc', name, r.error); return r; }).catch(function (e) { return { error: e }; });
+    args = args || {};
+    var getTok = window.cloudGetToken ? window.cloudGetToken() : Promise.resolve(null);
+    return getTok.then(function (tok) {
+      if (tok) {
+        args.p_token = '';
+        return fetch(SB_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args) })
+          .then(function (r) { return r.json().then(function (d) { return r.ok ? { data: d } : { error: d }; }); });
+      }
+      args.p_token = ADMIN_READ_TOKEN;
+      return c.rpc(name, args);
+    }).then(function (r) { if (r.error) console.warn('admin rpc', name, r.error); return r; }).catch(function (e) { return { error: e }; });
   }
 
   var view = 'sessions';        /* sessions | requests | transcript */

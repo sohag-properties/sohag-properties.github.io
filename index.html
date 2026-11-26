@@ -781,6 +781,22 @@
   </footer>
 
   <!-- ==================== 5. نافذة دخول الإدارة ==================== -->
+  <div id="cloudLoginModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm items-center justify-center z-50 p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-navy-900 flex items-center gap-2"><i class="fa-solid fa-cloud text-sky-600"></i> دخول السحابة (الإدارة)</h3>
+        <button type="button" onclick="closeCloudLogin()" class="text-slate-400 hover:text-slate-700 text-xl font-black cursor-pointer">×</button>
+      </div>
+      <p class="text-xs text-slate-600 font-semibold">أدخل كلمة سر السحابة مرة واحدة على الجهاز ده عشان حفظ العروض والموافقة على الطلبات يتسجلوا على السيرفر.</p>
+      <input type="password" id="cloudPassInput" autocomplete="current-password" onkeydown="if(event.key==='Enter') submitCloudLogin()" placeholder="كلمة سر السحابة" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center">
+      <div id="cloudLoginErr" class="text-xs font-black text-red-600 hidden"></div>
+      <div class="flex gap-2">
+        <button type="button" onclick="submitCloudLogin()" class="flex-1 bg-navy-900 hover:bg-navy-800 text-gold-400 font-black py-2.5 rounded-xl text-sm cursor-pointer">دخول</button>
+        <button type="button" onclick="closeCloudLogin()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm cursor-pointer">لاحقًا</button>
+      </div>
+    </div>
+  </div>
+
   <div id="adminLoginModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm items-center justify-center z-50 p-4 hidden">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
       <div class="flex items-center justify-between">
@@ -2497,12 +2513,69 @@
     }
 
     // --- v2: مزامنة بدون مكتبات خارجية (fetch مباشر) + طابور إعادة محاولة، عشان أي رفع يفشل ما يضيعش ---
-    function cloudHeaders(extra) {
-      return Object.assign({ apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, extra || {});
+    const CLOUD_ADMIN_EMAIL = 'admin@sohag-new.app';
+    const CLOUD_STRICT = false; // true بعد قفل الكتابة المجهولة في السيرفر
+    let cloudTok = null;
+    function cloudAuthGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_auth') || 'null'); } catch (_) { return null; } }
+    function cloudAuthSet(a) { try { if (a) localStorage.setItem('abuelhamd_cloud_auth', JSON.stringify(a)); else localStorage.removeItem('abuelhamd_cloud_auth'); } catch (_) {} }
+    function cloudHasSession() { const a = cloudAuthGet(); return !!(a && a.refresh_token); }
+    async function cloudAuthCall(grant, body) {
+      const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=' + grant, { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('auth ' + r.status);
+      const d = await r.json();
+      const a = { access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
+      cloudAuthSet(a); cloudTok = a.access_token; return a;
+    }
+    async function cloudToken() {
+      const a = cloudAuthGet();
+      if (!a) { cloudTok = null; return null; }
+      if (a.access_token && a.expires_at - 60000 > Date.now()) { cloudTok = a.access_token; return cloudTok; }
+      try { return (await cloudAuthCall('refresh_token', { refresh_token: a.refresh_token })).access_token; }
+      catch (e) { if (String(e).indexOf('auth 4') !== -1) { cloudAuthSet(null); cloudTok = null; } return null; }
+    }
+    window.cloudGetToken = cloudToken;
+    function cloudCanWrite(key) { return cloudHasSession() || (!CLOUD_STRICT && (key !== 'abuelhamd_pending' || isAdminMode)); }
+    function cloudHeaders(extra, tok) {
+      return Object.assign({ apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (tok || SUPABASE_ANON_KEY), 'Content-Type': 'application/json' }, extra || {});
+    }
+    function cloudReadTable(tok) { return (tok || !CLOUD_STRICT) ? 'app_kv' : 'public_kv'; }
+    function showCloudLogin() { const m = document.getElementById('cloudLoginModal'); if (!m) return; document.getElementById('cloudLoginErr').classList.add('hidden'); document.getElementById('cloudPassInput').value = ''; m.classList.remove('hidden'); m.classList.add('flex'); setTimeout(() => document.getElementById('cloudPassInput').focus(), 100); }
+    function closeCloudLogin() { const m = document.getElementById('cloudLoginModal'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); } }
+    async function submitCloudLogin() {
+      const pw = document.getElementById('cloudPassInput').value;
+      const err = document.getElementById('cloudLoginErr');
+      if (!pw) return;
+      try {
+        await cloudAuthCall('password', { email: CLOUD_ADMIN_EMAIL, password: pw });
+        closeCloudLogin();
+        await cloudPullAll();
+        await cloudFlushAll();
+        showToast('تم الدخول للسحابة ✓ الحفظ والموافقات بقت على السيرفر');
+      } catch (e) { err.textContent = 'كلمة السر غير صحيحة'; err.classList.remove('hidden'); }
+    }
+    async function cloudPullAll() {
+      try {
+        const tok = await cloudToken();
+        const res = await fetch(SUPABASE_URL + '/rest/v1/' + cloudReadTable(tok) + '?select=key,value,updated_at', { headers: cloudHeaders(null, tok) });
+        if (!res.ok) return;
+        const dirty = cloudDirtyGet();
+        for (const r of await res.json()) {
+          if (CLOUD_SYNC_KEYS.indexOf(r.key) === -1 || dirty.indexOf(r.key) !== -1) continue;
+          cloudAssignLocal(r.key, r.value); syncMetaStamp(r.key, Date.parse(r.updated_at) || Date.now());
+        }
+      } catch (_) {}
+    }
+    async function cloudSubmitPending(item) {
+      try {
+        const tok = await cloudToken();
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/submit_pending', { method: 'POST', headers: cloudHeaders(null, tok), body: JSON.stringify({ item }) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return true;
+      } catch (e) { console.warn('submit_pending failed', e); try { showToast('تعذّر إرسال الطلب للسيرفر، جرّب تاني'); } catch (_) {} return false; }
     }
     function cloudDirtyGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_dirty') || '[]'); } catch (_) { return []; } }
     function cloudDirtySet(arr) { try { localStorage.setItem('abuelhamd_cloud_dirty', JSON.stringify(arr)); } catch (_) {} }
-    function cloudDirtyAdd(key) { const d = cloudDirtyGet(); if (d.indexOf(key) === -1) { d.push(key); cloudDirtySet(d); } }
+    function cloudDirtyAdd(key) { if (!cloudCanWrite(key)) return; const d = cloudDirtyGet(); if (d.indexOf(key) === -1) { d.push(key); cloudDirtySet(d); } }
     function cloudDirtyDel(key) { cloudDirtySet(cloudDirtyGet().filter(k => k !== key)); }
     const cloudOverride = {};
     let cloudFlushing = false, cloudFailToastAt = 0;
@@ -2511,9 +2584,11 @@
       const raw = (key in cloudOverride) ? cloudOverride[key] : localStorage.getItem(key);
       if (raw === null) { cloudDirtyDel(key); return true; }
       const ts = new Date().toISOString();
+      const tok = await cloudToken();
+      if (!tok && !cloudCanWrite(key)) { cloudDirtyDel(key); return true; }
       const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
         method: 'POST',
-        headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }, tok),
         body: '{"key":' + JSON.stringify(key) + ',"value":' + raw + ',"updated_at":' + JSON.stringify(ts) + '}'
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2539,7 +2614,7 @@
       if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
     }
     function cloudPush(key, data) {
-      if (CLOUD_SYNC_KEYS.indexOf(key) === -1) return Promise.resolve();
+      if (CLOUD_SYNC_KEYS.indexOf(key) === -1 || !cloudCanWrite(key)) return Promise.resolve();
       cloudDirtyAdd(key);
       return cloudFlushAll();
     }
@@ -2555,7 +2630,9 @@
 
     async function cloudPoll() {
       try {
-        const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,updated_at', { headers: cloudHeaders() });
+        const tok = await cloudToken();
+        const tbl = cloudReadTable(tok);
+        const res = await fetch(SUPABASE_URL + '/rest/v1/' + tbl + '?select=key,updated_at', { headers: cloudHeaders(null, tok) });
         if (!res.ok) return;
         const rows = await res.json();
         const meta = syncMetaGet();
@@ -2564,7 +2641,7 @@
           if (CLOUD_SYNC_KEYS.indexOf(r.key) === -1 || dirty.indexOf(r.key) !== -1) continue;
           const cu = Date.parse(r.updated_at) || 0;
           if (cu > (meta[r.key] || 0)) {
-            const vr = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=value,updated_at&key=eq.' + encodeURIComponent(r.key), { headers: cloudHeaders() });
+            const vr = await fetch(SUPABASE_URL + '/rest/v1/' + tbl + '?select=value,updated_at&key=eq.' + encodeURIComponent(r.key), { headers: cloudHeaders(null, tok) });
             if (!vr.ok) continue;
             const arr = await vr.json();
             if (arr[0]) { cloudAssignLocal(r.key, arr[0].value); syncMetaStamp(r.key, Date.parse(arr[0].updated_at) || cu); }
@@ -2575,7 +2652,8 @@
 
     async function initCloudSync() {
       try {
-        const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,value,updated_at', { headers: cloudHeaders() });
+        const tok0 = await cloudToken();
+        const res = await fetch(SUPABASE_URL + '/rest/v1/' + cloudReadTable(tok0) + '?select=key,value,updated_at', { headers: cloudHeaders(null, tok0) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const byKey = {};
@@ -4039,6 +4117,7 @@
 
         pendingSubmissions.unshift(subObj);
         safeSaveStorage('abuelhamd_pending', pendingSubmissions);
+        cloudSubmitPending(subObj);
         updatePendingBadges();
         closeClientSubmitModal();
         showToast("تم إرسال بيانات عقارك بنجاح لإدارة سوهاج الجديدة!");
@@ -4151,6 +4230,7 @@
       closeAdminLoginModal();
       logAdminAction('تسجيل دخول', 'تفعيل صلاحيات الإدارة');
       applyViewModeUI();
+      if (!cloudHasSession()) setTimeout(showCloudLogin, 400);
       if (pendingAfterAdminLogin) {
         pendingAfterAdminLogin = false;
         switchTab('pending');
