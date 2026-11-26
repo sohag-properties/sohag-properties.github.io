@@ -161,6 +161,10 @@
       <div class="news-ticker-wrap flex-1 overflow-hidden relative h-5 flex items-center">
         <div id="liveNewsTickerText" class="news-ticker-track font-bold text-slate-200 cursor-pointer" onclick="switchTab('news')">📰 متابعة مستمرة لأعمال الترفيق والطرق بالمجاورات الجديدة بمدينة سوهاج الجديدة   ★   🏢 عرض جديد: قطعة أرض متميزة ناصية على شارع رئيسي بمجاورة 8 (مجاورة 8 - 460م²)   ★   🏢 عرض جديد: شقة سوبر لوكس 165م بكمبوند جاردن سيتي 4 (مجاورة 1 - كمبوند جاردن سيتي 4 - 165م²)   ★   🏢 عرض جديد: محل تجاري 45م بالدور الأرضي واجهة رئيسية بالداون تاون (الداون تاون (Downtown) - 45م²)</div>
       </div>
+      <a href="./download/" id="headerDlBtn" class="bg-gold-500 hover:bg-gold-400 text-navy-950 font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+        <span>حمّل التطبيق</span>
+      </a>
       <button type="button" id="mobileNotifyBtn" onclick="requestMobileNotifications()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
         <i class="fa-solid fa-bell"></i>
         <span id="mobileNotifyLabel">إشعارات الموبايل</span>
@@ -2504,6 +2508,28 @@
       nightDayFabSync(); initPushBanner();
       new MutationObserver(nightDayFabSync).observe(document.body, { attributes: true, attributeFilter: ['class'] });
     });
+    function isInstalledApp() {
+      try { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || /;\s*wv\)/i.test(navigator.userAgent) || document.referrer.indexOf('android-app://') === 0; } catch (_) { return false; }
+    }
+    (function setupAutoPush() {
+      window.addEventListener('load', () => {
+        try {
+          if (isInstalledApp()) { const h = document.getElementById('headerDlBtn'); if (h) h.classList.add('hidden'); }
+          if (!('Notification' in window)) return;
+          if (!isInstalledApp()) return;
+          if (Notification.permission === 'default') {
+            // طلب الإذن تلقائيًا أول ما التطبيق يتفتح، ولو المتصفح محتاج لمسة نعيده عند أول لمسة
+            const go = () => { if (Notification.permission === 'default') requestMobileNotifications(); };
+            setTimeout(go, 1500);
+            const once = () => { document.removeEventListener('pointerdown', once, true); setTimeout(go, 300); };
+            document.addEventListener('pointerdown', once, true);
+          } else if (Notification.permission === 'denied') {
+            const b = document.getElementById('pushBanner');
+            if (b) { const sp = b.querySelector('span'); if (sp) sp.innerHTML = '<i class="fa-solid fa-bell-slash"></i> الإشعارات متقفلة على موبايلك. افتح إعدادات التطبيق ← الإشعارات وفعّلها عشان توصلك العروض الجديدة'; const bt = b.querySelectorAll('button'); bt.forEach(x => x.classList.add('hidden')); b.classList.remove('hidden'); }
+          }
+        } catch (_) {}
+      });
+    })();
     function requestMobileNotifications() {
       if (!('Notification' in window)) {
         showToast("متصفحك لا يدعم إشعارات النظام");
