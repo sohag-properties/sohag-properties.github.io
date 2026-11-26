@@ -3827,6 +3827,8 @@
           };
         }
 
+        if (blockIfBadListing(propObj, false)) return;
+
         if (editId) {
           const idx = properties.findIndex(p => p.id === editId);
           if (idx !== -1) {
@@ -4089,6 +4091,30 @@
       return sched;
     }
 
+    // قواعد النشر: لا عرض بدون سعر وصورة وبيانات واضحة
+    function listingProblems(o, isClient) {
+      const bad = [];
+      if (!o.category || !o.subcategory) bad.push('اختر القسم والقسم الفرعي');
+      if (!o.location || !String(o.location).trim()) bad.push('حدد المنطقة / المجاورة');
+      if (!(Number(o.area) > 0)) bad.push('اكتب المساحة (أكبر من صفر)');
+      if (!(Number(o.totalPrice) > 0)) bad.push('اكتب السعر (لازم يكون أكبر من صفر)');
+      if (!Array.isArray(o.images) || o.images.length < 1) bad.push('أضف صورة واحدة على الأقل للعقار');
+      if (isClient) {
+        if (!String(o.ownerName || '').trim()) bad.push('اكتب اسمك');
+        const ph = String(o.ownerPhone || '').replace(/\D/g, '');
+        if (ph.length < 10) bad.push('اكتب رقم موبايل صحيح للتواصل');
+        if (String(o.notes || '').trim().length < 10) bad.push('اكتب وصف واضح للعقار (تفاصيل الموقع والحالة والتشطيب)');
+      }
+      return bad;
+    }
+    function blockIfBadListing(o, isClient) {
+      const bad = listingProblems(o, isClient);
+      if (!bad.length) return false;
+      showToast('⚠ ' + bad.join(' • '));
+      alert('لا يمكن الحفظ قبل استكمال البيانات التالية:\n\n- ' + bad.join('\n- '));
+      return true;
+    }
+
     function submitClientProperty(e) {
       e.preventDefault();
       try {
@@ -4221,6 +4247,7 @@
           };
         }
 
+        if (blockIfBadListing(subObj, true)) return;
         pendingSubmissions.unshift(subObj);
         safeSaveStorage('abuelhamd_pending', pendingSubmissions);
         cloudSubmitPending(subObj);
@@ -4268,6 +4295,7 @@
     function approvePending(id) {
       const idx = pendingSubmissions.findIndex(s => s.id === id);
       if (idx === -1) return;
+      { const bad = listingProblems(pendingSubmissions[idx], false); if (bad.length) { showToast('⚠ ما ينفعش الاعتماد: ' + bad.join(' • ') + ' — اضغط تعديل واستكمل البيانات'); return; } }
       const approved = { ...pendingSubmissions[idx], id: 'prop-' + Date.now(), sold: false, createdAt: Date.now() };
       properties.unshift(approved);
       pendingSubmissions.splice(idx, 1);
