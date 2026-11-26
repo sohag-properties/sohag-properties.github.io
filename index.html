@@ -2514,7 +2514,7 @@
 
     // --- v2: مزامنة بدون مكتبات خارجية (fetch مباشر) + طابور إعادة محاولة، عشان أي رفع يفشل ما يضيعش ---
     const CLOUD_ADMIN_EMAIL = 'admin@sohag-new.app';
-    const CLOUD_STRICT = false; // true بعد قفل الكتابة المجهولة في السيرفر
+    const CLOUD_STRICT = true; // الكتابة والقراءة الكاملة بتسجيل دخول الإدارة فقط
     let cloudTok = null;
     function cloudAuthGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_auth') || 'null'); } catch (_) { return null; } }
     function cloudAuthSet(a) { try { if (a) localStorage.setItem('abuelhamd_cloud_auth', JSON.stringify(a)); else localStorage.removeItem('abuelhamd_cloud_auth'); } catch (_) {} }

@@ -3,7 +3,6 @@
   'use strict';
   var SB_URL = 'https://ddjdejmzuucdbsprigbz.supabase.co';
   var SB_KEY = 'sb_publishable_cAUPNPGXZyrRY5-UN2wI5w_dERXX7hE';
-  var ADMIN_READ_TOKEN = 'GCOC6ksK3DE5qXvtuBKbYx7PikOsmVTU';
   var TEST_SESSIONS = {
     'f51eb4ff-fc07-478e-878b-0f8b087c7fd5': true,
     'b1cb9c8c-96c1-4f83-bba6-ec2382291e49': true
@@ -25,8 +24,7 @@
         return fetch(SB_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args) })
           .then(function (r) { return r.json().then(function (d) { return r.ok ? { data: d } : { error: d }; }); });
       }
-      args.p_token = ADMIN_READ_TOKEN;
-      return c.rpc(name, args);
+      return { error: 'سجّل دخول السحابة من بوابة الإدارة' };
     }).then(function (r) { if (r.error) console.warn('admin rpc', name, r.error); return r; }).catch(function (e) { return { error: e }; });
   }
 
