@@ -2828,7 +2828,7 @@
       if (badge) badge.textContent = pendingSubmissions.length;
       if (headerBadge) headerBadge.textContent = pendingSubmissions.length;
       if (dot) {
-        if (pendingSubmissions.length > 0) dot.classList.remove('hidden');
+        if (isAdminMode && pendingSubmissions.length > 0) dot.classList.remove('hidden');
         else dot.classList.add('hidden');
       }
     }
