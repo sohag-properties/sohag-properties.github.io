@@ -2647,22 +2647,48 @@
     function cloudDirtyDel(key) { cloudDirtySet(cloudDirtyGet().filter(k => k !== key)); }
     const cloudOverride = {};
     let cloudFlushing = false, cloudFailToastAt = 0;
+    let cloudLastError = '', cloudFailStreak = 0;
+
+    // بانر ثابت يفضل ظاهر طول ما فيه تعديلات ما اترفعتش — الفشل مستحيل يتفوت
+    function updateCloudSyncBanner() {
+      let b = document.getElementById('cloudSyncBanner');
+      const dirty = cloudDirtyGet();
+      if (!dirty.length) { if (b) b.classList.add('hidden'); return; }
+      if (!b) {
+        b = document.createElement('div');
+        b.id = 'cloudSyncBanner';
+        b.className = 'fixed bottom-24 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md z-[99999] bg-red-600 text-white text-xs font-black rounded-2xl px-4 py-3 shadow-2xl border-2 border-red-800';
+        document.body.appendChild(b);
+      }
+      b.classList.remove('hidden');
+      const reason = cloudLastError ? '<div class="mt-1.5 text-[11px] font-bold text-red-100 leading-relaxed">السبب: ' + cloudLastError + '</div>' : '';
+      b.innerHTML = '<div class="flex items-start gap-2"><i class="fa-solid fa-cloud-arrow-up mt-0.5"></i><div>⚠️ فيه تعديلات اتحفظت على جهازك بس ولسه ما اترفعتش للسحابة — بيحاول تلقائيًا كل 15 ثانية. لو البانر فضل ظاهر، شوف النت أو سجل دخول السحابة من جديد.' + reason + '</div></div>';
+    }
 
     async function cloudFlushKey(key) {
       const raw = (key in cloudOverride) ? cloudOverride[key] : localStorage.getItem(key);
       if (raw === null) { cloudDirtyDel(key); return true; }
       const ts = new Date().toISOString();
       const tok = await cloudToken();
-      if (!tok && !cloudCanWrite(key)) return true; // بدون جلسة: سيب العلم متعلّم، هيرفع بعد تسجيل الدخول
+      if (!tok && !cloudCanWrite(key)) { cloudLastError = 'مفيش تسجيل دخول للسحابة على الجهاز ده — سجل دخول من إعدادات الإدارة'; updateCloudSyncBanner(); return true; } // بدون جلسة: سيب العلم متعلّم، هيرفع بعد تسجيل الدخول
       const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
         method: 'POST',
         headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }, tok),
         body: '{"key":' + JSON.stringify(key) + ',"value":' + raw + ',"updated_at":' + JSON.stringify(ts) + '}'
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) {
+        let msg = 'HTTP ' + res.status;
+        try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
+        cloudLastError = msg;
+        throw new Error(msg);
+      }
       syncMetaStamp(key, Date.parse(ts));
       if (cloudOverride[key] === raw) delete cloudOverride[key];
       cloudDirtyDel(key);
+      if (cloudDirtyGet().length === 0) {
+        if (cloudFailStreak > 0) { try { showToast('✓ اترفعت التعديلات للسحابة'); } catch (_) {} }
+        cloudFailStreak = 0; cloudLastError = '';
+      }
       return true;
     }
     let cloudFlushAgain = false;
@@ -2674,11 +2700,12 @@
         await Promise.all(cloudDirtyGet().map(async (key) => {
           try { await cloudFlushKey(key); }
           catch (e) {
+            cloudFailStreak++;
             console.warn('cloud push failed, will retry', key, e);
             if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('تعذّر الرفع للسحابة حاليًا، هيعيد المحاولة تلقائيًا'); } catch (_) {} }
           }
         }));
-      } finally { cloudFlushing = false; }
+      } finally { cloudFlushing = false; updateCloudSyncBanner(); }
       if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
     }
     function cloudPush(key, data) {
