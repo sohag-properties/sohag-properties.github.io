@@ -5970,4 +5970,32 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
 })();
 
 </script>
+<script>
+/* rv-v1: reveal-on-scroll (staging). REVEAL_ON=false turns it off. Respects prefers-reduced-motion. */
+(function(){
+  var REVEAL_ON=true; if(!REVEAL_ON) return;
+  if(!('IntersectionObserver' in window)) return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var st=document.createElement('style');
+  st.textContent='.rv-pre{opacity:0;transform:translateY(22px);transition:opacity .55s ease,transform .55s ease;will-change:opacity,transform}.rv-pre.rv-in{opacity:1;transform:none}';
+  document.head.appendChild(st);
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('rv-in'); io.unobserve(e.target);} });},{threshold:0.08,rootMargin:'0px 0px -6% 0px'});
+  var SEL='.hb, #propertiesGrid > *, #propertiesSection > div, main > section, #newsSection, #statsSection';
+  function scan(){
+    document.querySelectorAll(SEL).forEach(function(el){
+      if(el.dataset.rv) return; el.dataset.rv='1';
+      var r=el.getBoundingClientRect();
+      if(r.top<innerHeight*0.9 && r.bottom>0) return; /* already on screen: never hide */
+      if(r.height===0) return;
+      el.classList.add('rv-pre'); io.observe(el);
+    });
+  }
+  var t; function later(){clearTimeout(t); t=setTimeout(scan,120);}
+  new MutationObserver(later).observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('load',later); later();
+  /* safety: if something stays hidden for 6s while on screen, show it */
+  setInterval(function(){document.querySelectorAll('.rv-pre:not(.rv-in)').forEach(function(el){var r=el.getBoundingClientRect(); if(r.top<innerHeight&&r.bottom>0) el.classList.add('rv-in');});},1500);
+})();
+
+</script>
 </body></html>
