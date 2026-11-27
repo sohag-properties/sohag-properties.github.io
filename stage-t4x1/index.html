@@ -158,8 +158,30 @@
 @keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes spBar{to{width:100%}}
 @media (prefers-reduced-motion:reduce){#splashScreen img,#splashScreen .t1,#splashScreen .t2{animation:none;opacity:1}}
+</style><style id="protectCss">
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none;user-drag:none}
+@media print{body *{display:none!important}body::after{content:"المحتوى محمي";display:block;font:900 24px sans-serif;text-align:center;padding:40px}}
+#protectShield{position:fixed;inset:0;z-index:2147483000;background:#0a1428;color:#facc15;display:none;align-items:center;justify-content:center;font:900 18px sans-serif;direction:rtl}
+#protectMark{position:fixed;inset:0;z-index:2147482000;pointer-events:none;overflow:hidden}
 </style></head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col transition-colors duration-300">
+<div id="protectShield">🔒 المحتوى محمي — ارجع للتطبيق</div><div id="protectMark"></div>
+<script>(function(){
+function ge(i){return document.getElementById(i)}
+var sh=ge('protectShield');
+function hide(){sh.style.display='flex'}function show(){sh.style.display='none'}
+document.addEventListener('visibilitychange',function(){document.hidden?hide():show()});
+window.addEventListener('blur',hide);window.addEventListener('focus',show);window.addEventListener('pageshow',show);
+document.addEventListener('contextmenu',function(e){var t=e.target&&e.target.tagName;if(t!=='INPUT'&&t!=='TEXTAREA')e.preventDefault()});
+['copy','cut','dragstart'].forEach(function(n){document.addEventListener(n,function(e){var t=e.target&&e.target.tagName;if(t!=='INPUT'&&t!=='TEXTAREA')e.preventDefault()})});
+document.addEventListener('keyup',function(e){if(e.key==='PrintScreen'){try{navigator.clipboard.writeText('المحتوى محمي')}catch(_){}hide();setTimeout(show,1500)}});
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&(e.key==='p'||e.key==='s'||e.key==='u')){e.preventDefault()}});
+function mark(){var id='';try{id=(localStorage.getItem('sohag_vid')||'').slice(-6)}catch(_){}
+var d=new Date(),t='سوهاج الجديدة • '+(id||'زائر')+' • '+d.getDate()+'/'+(d.getMonth()+1);
+var box=ge('protectMark');if(!box)return;var h='';for(var r=0;r<14;r++){for(var c=0;c<4;c++){h+='<span style="position:absolute;left:'+(c*30-8+(r%2)*15)+'%;top:'+(r*9)+'%;transform:rotate(-24deg);white-space:nowrap;font:800 12px sans-serif;color:rgba(128,128,128,.17)">'+t+'</span>'}}box.innerHTML=h}
+mark();})();</script>
 <div id="splashScreen"><img src="icon-192.png" alt=""><div class="t1">أهلاً بكم في سوهاج الجديدة</div><div class="t2">إدارة أ / محمد علي أبوالحمد<br>للتسويق والاستثمار العقاري</div><div class="bar"><i></i></div></div>
 <script>(function(){var el=document.getElementById('splashScreen');try{var l=Number(localStorage.getItem('sohag_splash_ts')||0);if(Date.now()-l<30*60*1000){el.parentNode.removeChild(el);return;}localStorage.setItem('sohag_splash_ts',String(Date.now()));}catch(e){}
 function done(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},500);}
