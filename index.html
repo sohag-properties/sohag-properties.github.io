@@ -4185,8 +4185,11 @@
           <div class="text-xs font-bold text-slate-700">المالك والهاتف: <span class="text-red-700 font-black">${sub.ownerPhone}</span></div>
           <div class="text-xs font-bold text-emerald-700">السعر المطلوب: ${Number(sub.totalPrice).toLocaleString('ar-EG')} ج.م • المساحة: ${sub.area} م²</div>
           <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">${sub.notes}</p>
+          ${sub.hold ? `<div class="text-xs font-black text-amber-800 bg-amber-50 border border-amber-300 rounded-xl p-2.5">⏸️ موقوف — بانتظار بيانات من المالك${sub.holdReason ? ': ' + sub.holdReason : ''}</div>` : ''}
           <div class="flex flex-wrap gap-2 pt-2">
-            <button type="button" onclick="approvePending('${sub.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-2 px-3 rounded-xl cursor-pointer">موافقة ونشر</button>
+            ${sub.hold
+              ? `<button type="button" onclick="unholdPending('${sub.id}')" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black py-2 px-3 rounded-xl cursor-pointer">استئناف المراجعة</button>`
+              : `<button type="button" onclick="approvePending('${sub.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black py-2 px-3 rounded-xl cursor-pointer">موافقة ونشر</button>`}
             <button type="button" onclick="editPendingSubmission('${sub.id}')" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-black px-3.5 py-2 rounded-xl cursor-pointer">تعديل</button>
             <button type="button" onclick="rejectPending('${sub.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-black px-3.5 py-2 rounded-xl cursor-pointer">حذف</button>
           </div>
@@ -4203,6 +4206,7 @@
     function approvePending(id) {
       const idx = pendingSubmissions.findIndex(s => s.id === id);
       if (idx === -1) return;
+      if (pendingSubmissions[idx].hold) { showToast('⏸️ الطلب موقوف — بانتظار بيانات من المالك، اضغط "استئناف المراجعة" بعد استكمالها'); return; }
       { const bad = listingProblems(pendingSubmissions[idx], false); if (bad.length) { showToast('⚠ ما ينفعش الاعتماد: ' + bad.join(' • ') + ' — اضغط تعديل واستكمل البيانات'); return; } }
       const approved = { ...pendingSubmissions[idx], id: 'prop-' + Date.now(), sold: false, createdAt: Date.now() };
       properties.unshift(approved);
@@ -4213,6 +4217,15 @@
       updateStats();
       renderPendingSubmissions();
       showToast("تم اعتماد ونشر العرض بنجاح");
+    }
+
+    function unholdPending(id) {
+      const sub = pendingSubmissions.find(s => s.id === id);
+      if (!sub) return;
+      delete sub.hold; delete sub.holdReason;
+      safeSaveStorage('abuelhamd_pending', pendingSubmissions);
+      renderPendingSubmissions();
+      showToast("تم استئناف المراجعة — يمكنك الاعتماد الآن");
     }
 
     function rejectPending(id) {
