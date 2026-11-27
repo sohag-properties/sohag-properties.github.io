@@ -5739,7 +5739,7 @@ window.addEventListener('DOMContentLoaded', function(){
         const local = (await mgrRescueIdb()).filter(r => !ids.has(r.id));
         window.__rescueList = local;
         if (!local.length) { draw('كل اللي محفوظ على الجهاز موجود على السيرفر. مفيش حاجة ضايعة على الجهاز ده.' + window.__journalHtml); return; }
-        draw('عناصر موجودة على جهازك بس مش على السيرفر (' + local.length + '). الرجوع بيحطها في الواردة <b>غير منشورة</b>:' + local.map((r, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String((r.item.title || r.item.id)).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (r.item.location || '') + ' • ' + (r.item.totalPrice || r.item.price || '') + '</div><button type="button" onclick="mgrRescueRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join('' + window.__journalHtml);
+        draw('عناصر موجودة على جهازك بس مش على السيرفر (' + local.length + '). الرجوع بيحطها في الواردة <b>غير منشورة</b>:' + local.map((r, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String((r.item.title || r.item.id)).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (r.item.location || '') + ' • ' + (r.item.totalPrice || r.item.price || '') + '</div><button type="button" onclick="mgrRescueRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join('') + window.__journalHtml);
       } catch (e) { draw('<div class="text-red-700">فشل الفحص: ' + String(e && e.message || e) + '</div>'); }
     }
     async function mgrJournalRestore(i, btn) {
