@@ -686,9 +686,10 @@
         <button type="button" onclick="closePwdChange()" class="text-slate-400 hover:text-slate-700 text-xl font-black cursor-pointer">×</button>
       </div>
       <p class="text-xs text-slate-600 font-semibold">اكتب كلمة السر الجديدة هنا (متبعتهاش على واتساب)، وبعدين اطلب كود التأكيد: ابعت كلمة "الكود" على واتساب وهيوصلك كود من 6 أرقام صالح لمدة 10 دقائق.</p>
-      <input type="password" id="pwdNew1" autocomplete="new-password" placeholder="كلمة السر الجديدة (8 حروف على الأقل)" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center">
-      <input type="password" id="pwdNew2" autocomplete="new-password" placeholder="تأكيد كلمة السر الجديدة" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center">
+      <input type="password" id="pwdNew1" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="كلمة السر الجديدة (8 حروف على الأقل)" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center">
+      <input type="password" id="pwdNew2" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="تأكيد كلمة السر الجديدة" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center">
       <input type="text" id="pwdCode" inputmode="numeric" maxlength="6" placeholder="كود التأكيد من واتساب (6 أرقام)" class="w-full py-3 px-4 bg-slate-50 border-2 border-slate-300 rounded-xl text-sm font-bold text-center tracking-widest">
+      <button type="button" onclick="['pwdNew1','pwdNew2'].forEach(i=>{const e=document.getElementById(i);e.type=e.type==='password'?'text':'password'})" class="text-xs font-black text-slate-600 cursor-pointer">👁 إظهار / إخفاء كلمة السر</button>
       <div id="pwdChangeErr" class="text-xs font-black text-red-600 hidden"></div>
       <div id="pwdChangeOk" class="text-xs font-black text-emerald-600 hidden"></div>
       <div class="flex gap-2">
@@ -2708,12 +2709,13 @@
     function openPwdChange() { const m = document.getElementById('pwdChangeModal'); if (!m) return; ['pwdNew1','pwdNew2','pwdCode'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; }); document.getElementById('pwdChangeErr').classList.add('hidden'); document.getElementById('pwdChangeOk').classList.add('hidden'); m.classList.remove('hidden'); m.classList.add('flex'); }
     function closePwdChange() { const m = document.getElementById('pwdChangeModal'); if (m) { m.classList.add('hidden'); m.classList.remove('flex'); } }
     async function submitPwdChange() {
-      const p1 = document.getElementById('pwdNew1').value, p2 = document.getElementById('pwdNew2').value, code = document.getElementById('pwdCode').value.trim();
+      const pwNorm = v => String(v||'').replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0)-0x660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0)-0x6F0)).replace(/[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]/g,'').trim();
+      const p1 = pwNorm(document.getElementById('pwdNew1').value), p2 = pwNorm(document.getElementById('pwdNew2').value), code = document.getElementById('pwdCode').value.trim();
       const err = document.getElementById('pwdChangeErr'), ok = document.getElementById('pwdChangeOk');
       err.classList.add('hidden'); ok.classList.add('hidden');
       const fail = t => { err.textContent = t; err.classList.remove('hidden'); };
       if (!p1 || p1.length < 8) return fail('كلمة السر الجديدة لازم 8 حروف على الأقل');
-      if (p1 !== p2) return fail('كلمتا السر غير متطابقتين');
+      if (p1 !== p2) return fail('كلمتا السر غير متطابقتين (الأولى ' + p1.length + ' حرف والتانية ' + p2.length + ' حرف) — اضغط 👁 وراجع الاتنين');
       if (!/^\d{6}$/.test(code)) return fail('اكتب كود التأكيد المكوّن من 6 أرقام اللي وصلك على واتساب');
       const btn = document.getElementById('pwdChangeBtn'); btn.disabled = true;
       try {
@@ -2728,7 +2730,7 @@
       finally { btn.disabled = false; }
     }
     async function submitCloudLogin() {
-      const pw = document.getElementById('cloudPassInput').value;
+      const pw = String(document.getElementById('cloudPassInput').value||'').replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0)-0x660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0)-0x6F0)).replace(/[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]/g,'').trim();
       const err = document.getElementById('cloudLoginErr');
       if (!pw) return;
       try {
