@@ -1,0 +1,83 @@
+/* Premium admin panel (owner only; every call is checked server-side by the admin login). */
+(function () {
+  'use strict';
+  var URL_ = 'https://ddjdejmzuucdbsprigbz.supabase.co', KEY = 'sb_publishable_cAUPNPGXZyrRY5-UN2wI5w_dERXX7hE';
+  var ERRS = { DUPLICATE_USER: 'اسم المستخدم موجود', WEAK_CREDENTIALS: 'اسم المستخدم 3 حروف+ وكلمة السر 6+', DAYS_REQUIRED: 'حدد عدد الأيام', ALREADY_DECIDED: 'الطلب اتحسم قبل كده', unauthorized: 'سجّل دخول السحابة الأول' };
+  function rpc(fn, a) {
+    return (window.cloudGetToken ? window.cloudGetToken() : Promise.resolve(null)).then(function (t) {
+      if (!t) throw new Error('سجّل دخول السحابة الأول (الإدارة > السحابة)');
+      return fetch(URL_ + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(a || {}) });
+    }).then(function (r) { return r.json().then(function (d) { if (!r.ok) { var m = (d && d.message) || 'خطأ'; var k = Object.keys(ERRS).filter(function (x) { return m.indexOf(x) >= 0; })[0]; if (m.indexOf('duplicate key') >= 0) k = 'DUPLICATE_USER'; throw new Error(k ? ERRS[k] : m); } return d; }); });
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(t) { if (window.showToast) showToast(t); else alert(t); }
+  function fail(e) { toast(e.message || 'خطأ'); }
+  var tab = 'pay', plans = [];
+  var I = 'padding:8px;border:1px solid #cbd5e1;border-radius:8px;width:100%;margin:2px 0;font-size:13px';
+  var B = 'background:#b45309;color:#fff;font-weight:800;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;margin:2px';
+  var B2 = 'background:#e2e8f0;color:#0f172a;font-weight:800;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;margin:2px';
+  var BR = 'background:#b91c1c;color:#fff;font-weight:800;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;margin:2px';
+  function root() { var m = document.getElementById('premAdm'); if (!m) { m = document.createElement('div'); m.id = 'premAdm'; m.style.cssText = 'position:fixed;inset:0;z-index:9998;background:#f1f5f9;overflow:auto;direction:rtl;color:#0f172a;display:none'; document.body.appendChild(m); } return m; }
+  window.premAdmClose = function () { root().style.display = 'none'; document.body.style.overflow = ''; };
+  window.premAdmOpen = function () { root().style.display = 'block'; document.body.style.overflow = 'hidden'; draw(); };
+  window.premAdmTab = function (t) { tab = t; draw(); };
+  function draw() {
+    var T = [['pay', 'طلبات الدفع'], ['subs', 'المشتركين'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات']];
+    root().innerHTML = '<div style="max-width:760px;margin:0 auto;padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">👑 الخدمات المدفوعة (تجريبي)</b><button onclick="premAdmClose()" style="' + B2 + '">إغلاق ✕</button></div><div style="margin:8px 0">' + T.map(function (x) { return '<button onclick="premAdmTab(\'' + x[0] + '\')" style="' + (tab === x[0] ? B : B2) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="pab">...</div></div>';
+    ({ pay: vPay, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq })[tab]();
+  }
+  function body(h) { var e = document.getElementById('pab'); if (e) e.innerHTML = h; }
+  function box(h) { return '<div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:8px 0;font-size:13px">' + h + '</div>'; }
+  function d(s) { return s ? new Date(s).toLocaleString('ar-EG') : ''; }
+  function loadPlans() { return rpc('admin_prem_plans_list').then(function (p) { plans = p; return p; }); }
+  /* payments */
+  function vPay() {
+    Promise.all([rpc('admin_prem_pay_list'), loadPlans()]).then(function (r) {
+      var l = r[0]; body(l.length ? l.map(function (x) {
+        var st = { pending: '⏳ في الانتظار', confirmed: '✅ مؤكد', rejected: '❌ مرفوض' }[x.status];
+        return box('<b>' + esc(x.code) + '</b> ' + st + '<div>' + esc(x.name) + ' - ' + esc(x.phone) + '</div><div>الباقة: ' + esc(x.plan || '-') + ' (' + (x.days || '?') + ' يوم / ' + esc(x.price == null ? '?' : x.price) + ' جنيه)</div><div>رقم العملية: <b>' + esc(x.txn) + '</b> | من: ' + esc(x.sender || '-') + ' | المبلغ: ' + esc(x.amount == null ? '-' : x.amount) + '</div><div style="color:#64748b">' + d(x.created_at) + '</div>' +
+          (x.has_shot ? '<button onclick="premShot(' + x.id + ')" style="' + B2 + '">عرض صورة التحويل</button><div id="shot' + x.id + '"></div>' : '') +
+          (x.status === 'pending' ? '<div style="border-top:1px dashed #cbd5e1;margin-top:6px;padding-top:6px"><input id="cu' + x.id + '" placeholder="اسم مستخدم للمشترك" style="' + I + '"><input id="cp' + x.id + '" placeholder="كلمة سر (6+)" style="' + I + '"><input id="cd' + x.id + '" placeholder="عدد الأيام (فاضي = حسب الباقة)" inputmode="numeric" style="' + I + '"><button onclick="premPay(' + x.id + ',\'confirmed\')" style="' + B + '">تأكيد التحويل وإنشاء الحساب</button><button onclick="premPay(' + x.id + ',\'rejected\')" style="' + BR + '">رفض</button></div>' : (x.note ? '<div>ملاحظة: ' + esc(x.note) + '</div>' : '')));
+      }).join('') : box('لا توجد طلبات')); }).catch(fail);
+  }
+  window.premShot = function (id) { rpc('admin_prem_pay_shot', { p_id: id }).then(function (b) { document.getElementById('shot' + id).innerHTML = '<img style="max-width:100%;border-radius:8px;margin-top:6px" src="data:image/jpeg;base64,' + b + '">'; }).catch(fail); };
+  window.premPay = function (id, st) {
+    var g = function (p) { var e = document.getElementById(p + id); return e ? e.value : ''; };
+    if (st === 'rejected' && !confirm('رفض الطلب؟')) return;
+    rpc('admin_prem_pay_decide', { p_id: id, p_status: st, p_note: null, p_username: g('cu'), p_password: g('cp'), p_days: parseInt(g('cd')) || null }).then(function () { toast(st === 'confirmed' ? 'تم التأكيد وإنشاء الحساب' : 'تم الرفض'); vPay(); }).catch(fail);
+  };
+  /* subscribers */
+  function vSubs() {
+    Promise.all([rpc('admin_prem_subs_list'), loadPlans()]).then(function (r) {
+      var opts = plans.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name) + ' (' + p.days + ' يوم)</option>'; }).join('');
+      var form = box('<b>مشترك جديد</b><input id="nu" placeholder="اسم المستخدم" style="' + I + '"><input id="np" placeholder="كلمة السر" style="' + I + '"><input id="nn" placeholder="الاسم الظاهر" style="' + I + '"><select id="npl" style="' + I + '"><option value="">بدون باقة (أيام يدوي)</option>' + opts + '</select><input id="nd" placeholder="عدد الأيام (اختياري لو في باقة)" inputmode="numeric" style="' + I + '"><input id="npd" placeholder="المبلغ المدفوع" inputmode="decimal" style="' + I + '"><button onclick="premNewSub()" style="' + B + '">إنشاء</button>');
+      body(form + r[0].map(function (s) {
+        return box('<b>' + esc(s.display_name) + '</b> (' + esc(s.username) + ') ' + (s.expired ? '⛔ منتهي' : s.status === 'suspended' ? '⏸ موقوف' : '✅ نشط') + '<div>ينتهي: ' + d(s.end_at) + '</div><div>الجهاز: ' + (s.bound ? 'مربوط من ' + d(s.bound_at) : 'غير مربوط') + '</div><div>' +
+          '<button onclick="premExt(\'' + s.id + '\')" style="' + B + '">تمديد (أيام)</button><button onclick="premSusp(\'' + s.id + '\',\'' + (s.status === 'suspended' ? 'active' : 'suspended') + '\')" style="' + B2 + '">' + (s.status === 'suspended' ? 'تفعيل' : 'إيقاف') + '</button><button onclick="premResetDev(\'' + s.id + '\')" style="' + B2 + '">فك ربط الجهاز</button><button onclick="premPwd(\'' + s.id + '\')" style="' + B2 + '">كلمة سر جديدة</button></div>');
+      }).join('')); }).catch(fail);
+  }
+  window.premNewSub = function () { var g = function (i) { return document.getElementById(i).value; }; rpc('admin_prem_sub_create', { p_username: g('nu'), p_password: g('np'), p_display: g('nn'), p_kind: 'individual', p_plan_id: +g('npl') || null, p_days: parseInt(g('nd')) || null, p_paid: parseFloat(g('npd')) || null, p_note: null }).then(function () { toast('تم إنشاء الحساب'); vSubs(); }).catch(fail); };
+  window.premExt = function (id) { var n = parseInt(prompt('عدد الأيام للتمديد')); if (!n) return; rpc('admin_prem_sub_extend', { p_id: id, p_days: n }).then(function () { toast('تم التمديد'); vSubs(); }).catch(fail); };
+  window.premSusp = function (id, st) { rpc('admin_prem_sub_set', { p_id: id, p_end_at: null, p_status: st }).then(function () { vSubs(); }).catch(fail); };
+  window.premResetDev = function (id) { if (!confirm('فك ربط الجهاز؟ أول جهاز يسجل دخول بعدها هيتربط.')) return; rpc('admin_prem_sub_reset_device', { p_id: id }).then(function () { toast('تم فك الربط'); vSubs(); }).catch(fail); };
+  window.premPwd = function (id) { var p = prompt('كلمة السر الجديدة (6 حروف+)'); if (!p) return; rpc('admin_prem_sub_password', { p_id: id, p_password: p }).then(function () { toast('تم التغيير'); }).catch(fail); };
+  /* plans */
+  function vPlans() {
+    loadPlans().then(function (p) { body(box('<b>باقة جديدة</b><input id="pn" placeholder="الاسم (مثال: 15 يوم)" style="' + I + '"><input id="pd" placeholder="عدد الأيام" inputmode="numeric" style="' + I + '"><input id="pr" placeholder="السعر بالجنيه" inputmode="decimal" style="' + I + '"><button onclick="premPlanSave()" style="' + B + '">حفظ</button>') + p.map(function (x) { return box('<b>' + esc(x.name) + '</b> - ' + x.days + ' يوم - ' + esc(x.price_egp == null ? '-' : x.price_egp) + ' جنيه ' + (x.active ? '' : '(مخفية)') + '<div><button onclick="premPlanEdit(' + x.id + ')" style="' + B2 + '">تعديل</button><button onclick="premPlanTog(' + x.id + ')" style="' + B2 + '">' + (x.active ? 'إخفاء' : 'إظهار') + '</button></div>'); }).join('')); }).catch(fail);
+  }
+  window.premPlanSave = function () { var g = function (i) { return document.getElementById(i).value; }; rpc('admin_prem_plan_save', { p_id: null, p_name: g('pn'), p_days: parseInt(g('pd')), p_price: parseFloat(g('pr')) || null, p_active: true }).then(function () { vPlans(); }).catch(fail); };
+  window.premPlanEdit = function (id) { var x = plans.filter(function (p) { return p.id === id; })[0]; var n = prompt('الاسم', x.name); if (n == null) return; var dd = prompt('الأيام', x.days); if (dd == null) return; var pr = prompt('السعر', x.price_egp == null ? '' : x.price_egp); if (pr == null) return; rpc('admin_prem_plan_save', { p_id: id, p_name: n, p_days: parseInt(dd), p_price: parseFloat(pr) || null, p_active: x.active }).then(function () { vPlans(); }).catch(fail); };
+  window.premPlanTog = function (id) { var x = plans.filter(function (p) { return p.id === id; })[0]; rpc('admin_prem_plan_save', { p_id: id, p_name: x.name, p_days: x.days, p_price: x.price_egp, p_active: !x.active }).then(function () { vPlans(); }).catch(fail); };
+  /* templates */
+  function vTpl() {
+    rpc('admin_prem_templates_list').then(function (l) { body(box('<b>رفع نموذج عقد (PDF)</b><input id="tt" placeholder="عنوان النموذج" style="' + I + '"><input id="tf" type="file" accept="application/pdf" style="' + I + '"><button onclick="premTplUp()" style="' + B + '">رفع</button>') + l.map(function (t) { return box('<b>' + esc(t.title) + '</b> ' + Math.round(t.size / 1024) + ' KB ' + (t.active ? '' : '(مخفي)') + '<button onclick="premTplTog(' + t.id + ',' + !t.active + ')" style="' + B2 + '">' + (t.active ? 'إخفاء' : 'إظهار') + '</button>'); }).join('')); }).catch(fail);
+  }
+  window.premTplUp = function () { var f = document.getElementById('tf').files[0], t = document.getElementById('tt').value; if (!f || !t) return toast('اختار ملف وعنوان'); if (f.size > 4e6) return toast('الملف أكبر من 4 ميجا'); var r = new FileReader(); r.onload = function () { rpc('admin_prem_template_save', { p_title: t, p_filename: f.name, p_mime: f.type || 'application/pdf', p_data_b64: String(r.result).split(',')[1] }).then(function () { toast('تم الرفع'); vTpl(); }).catch(fail); }; r.readAsDataURL(f); };
+  window.premTplTog = function (id, a) { rpc('admin_prem_template_active', { p_id: id, p_active: a }).then(function () { vTpl(); }).catch(fail); };
+  /* requests */
+  function vReq() {
+    rpc('admin_prem_requests_list').then(function (l) { body(l.length ? l.map(function (r) { return box('<b>' + (r.kind === 'inspection' ? 'معاينة' : 'استشارة') + '</b> من ' + esc(r.subscriber) + ' (' + esc(r.username) + ') - ' + esc(r.status) + '<div>' + esc(r.message) + '</div>' + (r.phone ? '<div>📞 ' + esc(r.phone) + '</div>' : '') + '<div style="color:#64748b">' + d(r.created_at) + '</div>' + (r.owner_reply ? '<div style="color:#047857">ردك: ' + esc(r.owner_reply) + '</div>' : '') + '<button onclick="premReply(' + r.id + ')" style="' + B + '">رد</button><button onclick="premReplyClose(' + r.id + ')" style="' + B2 + '">إغلاق الطلب</button>'); }).join('') : box('لا توجد طلبات')); }).catch(fail);
+  }
+  window.premReply = function (id) { var t = prompt('اكتب ردك'); if (!t) return; rpc('admin_prem_request_reply', { p_id: id, p_reply: t, p_status: 'replied' }).then(function () { vReq(); }).catch(fail); };
+  window.premReplyClose = function (id) { rpc('admin_prem_request_reply', { p_id: id, p_reply: null, p_status: 'closed' }).then(function () { vReq(); }).catch(fail); };
+})();

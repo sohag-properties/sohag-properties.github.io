@@ -5414,6 +5414,8 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
 <script src="../citymap.js?v=1"></script>
 <script src="../chat.js?v=7"></script>
 <script src="admin-chats.js"></script>
+<script src="premium-admin.js?v=1"></script>
+<script src="premium.js?v=1"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <script>
 (function(){try{
@@ -5817,7 +5819,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['content', '🗂️ الأقسام والمحتوى', '', grid([tile('fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', 'panelAct(openSectionsManager)', 'bg-purple-700'), tile('fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'), tile('fa-shop', 'المولات', 'panelAct(openMallsManager)', 'bg-navy-700'), tile('fa-lock', 'القفل التلقائي', 'panelAct(mgrLockSettings)', 'bg-red-700')])],
         ['cat', '📋 عقارات كل قسم', '', '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">' + cats + '</div>'],
         ['rescue', '🛟 استرجاع من الجهاز', '', grid([tile('fa-life-ring', 'فحص واسترجاع عناصر ضايعة', 'mgrRescueOpen()', 'bg-rose-700')])],
-        ['admin', '⚙️ الإدارة والإعدادات', '', grid([tile('fa-user-shield', 'المشرفون', 'panelAct(openAdminsManager)', 'bg-amber-700'), tile('fa-cloud', 'السحابة', 'panelAct(showCloudLogin)', 'bg-sky-800'), tile('fa-bullhorn', 'رسالة عاجلة', 'panelAct(openUrgentModal)', 'bg-red-700'), tile('fa-key', 'تغيير كلمة السر', 'panelAct(openPwdChange)', 'bg-slate-700'), tile('fa-download', 'نسخة احتياطية', 'panelAct(exportBackup)', 'bg-slate-600')])]
+        ['admin', '⚙️ الإدارة والإعدادات', '', grid([tile('fa-crown', 'الخدمات المدفوعة', 'panelAct(premAdmOpen)', 'bg-yellow-600'), tile('fa-user-shield', 'المشرفون', 'panelAct(openAdminsManager)', 'bg-amber-700'), tile('fa-cloud', 'السحابة', 'panelAct(showCloudLogin)', 'bg-sky-800'), tile('fa-bullhorn', 'رسالة عاجلة', 'panelAct(openUrgentModal)', 'bg-red-700'), tile('fa-key', 'تغيير كلمة السر', 'panelAct(openPwdChange)', 'bg-slate-700'), tile('fa-download', 'نسخة احتياطية', 'panelAct(exportBackup)', 'bg-slate-600')])]
       ];
       const html = groups.map(g => { const o = !!window.__acc[g[0]]; return '<div class="rounded-2xl border border-slate-300 bg-white overflow-hidden"><button type="button" aria-expanded="' + o + '" onclick="panelAccToggle(\'' + g[0] + '\', this)" class="w-full flex items-center justify-between gap-2 bg-navy-900 text-white px-4 py-3 text-sm font-black cursor-pointer"><span>' + g[1] + (g[2] ? '<span class="text-amber-300 text-xs">' + g[2] + '</span>' : '') + '</span><span class="acc-ch text-gold-400">' + (o ? '▴' : '▾') + '</span></button><div class="acc-body' + (o ? ' open' : '') + '"><div class="p-3">' + g[3] + '</div></div></div>'; }).join('');
       if (window.__panelSig !== html) { window.__panelSig = html; box.innerHTML = html; }
