@@ -2752,14 +2752,55 @@ setTimeout(done,2100);el.addEventListener('click',done);})();</script>
       } catch (_) {}
       window.__propsLoading = false; try { handleSearchFilter(); } catch (_) {}
     }
-    async function cloudSubmitPending(item) {
-      try {
-        const tok = await cloudToken();
-        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/submit_pending', { method: 'POST', headers: cloudHeaders(null, tok), body: JSON.stringify({ item }) });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return true;
-      } catch (e) { console.warn('submit_pending failed', e); try { showToast('تعذّر إرسال الطلب للسيرفر، جرّب تاني'); } catch (_) {} return false; }
+    function submitReasonAr(m) {
+      m = String(m || '');
+      if (/needs a price/.test(m)) return 'السعر الإجمالي ناقص أو صفر';
+      if (/needs an area/.test(m)) return 'المساحة ناقصة';
+      if (/needs a photo/.test(m)) return 'لازم صورة واحدة على الأقل';
+      if (/section and location/.test(m)) return 'القسم أو القسم الفرعي أو الموقع ناقص';
+      if (/details and phone/.test(m)) return 'التفاصيل (١٠ حروف على الأقل) أو رقم الهاتف (١٠ أرقام) ناقص';
+      if (/too large/.test(m)) return 'حجم الصور كبير — قلّل عدد الصور أو استخدم صور أصغر';
+      if (/inbox full/.test(m)) return 'صندوق الطلبات ممتلئ';
+      return m || 'خطأ غير معروف';
     }
+    // يرجع {ok, error, network} بعد ما السيرفر يرد فعلًا؛ بيعيد المحاولة تلقائيًا على أخطاء الشبكة
+    async function cloudSubmitPending(item) {
+      let last = { ok: false, error: 'الاتصال بالسيرفر فشل', network: true };
+      for (let i = 0; i < 3; i++) {
+        try {
+          const tok = await cloudToken();
+          const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/submit_pending2', { method: 'POST', headers: cloudHeaders(null, tok), body: JSON.stringify({ item }) });
+          if (!r.ok) { last = { ok: false, error: 'السيرفر رد بخطأ (' + r.status + ')', network: r.status >= 500 }; if (r.status < 500) return last; }
+          else { const j = await r.json(); if (j && j.ok) return { ok: true }; return { ok: false, error: submitReasonAr(j && j.error), network: false }; }
+        } catch (e) { last = { ok: false, error: 'الاتصال بالسيرفر فشل — اتأكد من الإنترنت', network: true }; }
+        await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+      }
+      return last;
+    }
+    function clientSubmitStatus(kind, msg) {
+      const form = document.getElementById('clientSubmitForm'); if (!form) return;
+      let b = document.getElementById('clientSubmitStatus');
+      if (!b) { b = document.createElement('div'); b.id = 'clientSubmitStatus'; b.className = 'rounded-xl px-3 py-2 text-xs font-black'; form.insertBefore(b, form.firstChild); }
+      const btn = form.querySelector('button[type=submit]');
+      if (kind === 'clear') { b.className = 'hidden'; b.textContent = ''; if (btn) btn.disabled = false; return; }
+      b.className = 'rounded-xl px-3 py-2 text-xs font-black ' + (kind === 'wait' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-red-100 text-red-800 border-2 border-red-500');
+      b.textContent = msg || (kind === 'wait' ? 'جاري الإرسال... متقفلش الصفحة' : '');
+      if (btn) btn.disabled = (kind === 'wait');
+      if (kind === 'err') { try { b.scrollIntoView({ block: 'center' }); } catch (_) {} }
+    }
+    function submitQueueGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_submit_queue') || '[]'); } catch (_) { return []; } }
+    function submitQueueSet(a) { try { localStorage.setItem('abuelhamd_submit_queue', JSON.stringify(a)); } catch (_) {} }
+    let __queueBusy = false;
+    async function submitQueueRetry() {
+      if (__queueBusy) return; const q = submitQueueGet(); if (!q.length) return; __queueBusy = true;
+      try {
+        for (const it of q) {
+          const r = await cloudSubmitPending(it);
+          if (r.ok || !r.network) { submitQueueSet(submitQueueGet().filter(x => x.id !== it.id)); if (r.ok) { try { showToast('✓ طلبك اتبعت للإدارة'); } catch (_) {} } }
+        }
+      } finally { __queueBusy = false; }
+    }
+    setInterval(submitQueueRetry, 30000); window.addEventListener('load', () => setTimeout(submitQueueRetry, 4000)); window.addEventListener('online', submitQueueRetry);
     function cloudDirtyGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_dirty') || '[]'); } catch (_) { return []; } }
     function cloudDirtySet(arr) { try { localStorage.setItem('abuelhamd_cloud_dirty', JSON.stringify(arr)); } catch (_) {} }
     function cloudDirtyAdd(key) { if (!cloudCanWrite(key)) return; const d = cloudDirtyGet(); if (d.indexOf(key) === -1) { d.push(key); cloudDirtySet(d); } }
@@ -4456,7 +4497,7 @@ setTimeout(done,2100);el.addEventListener('click',done);})();</script>
       return true;
     }
 
-    function submitClientProperty(e) {
+    async function submitClientProperty(e) {
       e.preventDefault();
       try {
         const cat = document.getElementById('clientCategory').value;
@@ -4591,13 +4632,28 @@ setTimeout(done,2100);el.addEventListener('click',done);})();</script>
         }
 
         if (blockIfBadListing(subObj, true)) return;
+        if (window.__submitting) return;
+        window.__submitting = true;
+        clientSubmitStatus('wait');
+        let res;
+        try { res = await cloudSubmitPending(subObj); } finally { window.__submitting = false; }
+        if (!res.ok) {
+          if (res.network) {
+            const q = submitQueueGet(); q.push(subObj); submitQueueSet(q);
+            clientSubmitStatus('err', '⚠ ما اتبعتش لسه — ' + res.error + '. طلبك محفوظ على جهازك وهيتبعت تلقائيًا أول ما الاتصال يرجع. متبعتوش مرة تانية.');
+          } else {
+            clientSubmitStatus('err', '⚠ ما اتبعتش — ' + res.error + '. البيانات لسه في النموذج، صلّح وابعت تاني.');
+          }
+          return;
+        }
         pendingSubmissions.unshift(subObj);
         safeSaveStorage('abuelhamd_pending', pendingSubmissions);
-        cloudSubmitPending(subObj);
         updatePendingBadges();
+        clientSubmitStatus('clear');
         closeClientSubmitModal();
-        showToast("تم إرسال بيانات عقارك بنجاح لإدارة سوهاج الجديدة!");
+        showToast("✓ وصل للإدارة — تم استلام بيانات عقارك بنجاح");
       } catch (err) {
+        window.__submitting = false; try { clientSubmitStatus('err', '⚠ حصل خطأ أثناء الإرسال — جرّب تاني'); } catch (_) {}
         console.error(err);
         showToast("حدث خطأ أثناء الإرسال");
       }
