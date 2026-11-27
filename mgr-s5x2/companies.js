@@ -1,0 +1,28 @@
+/* "الشركات داخل المدينة": public section. Data comes from the companies_public() function. */
+(function () {
+  'use strict';
+  var URL_ = 'https://ddjdejmzuucdbsprigbz.supabase.co', KEY = 'sb_publishable_cAUPNPGXZyrRY5-UN2wI5w_dERXX7hE';
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  var C = 'background:#13233b;border:1px solid #c9a24a55;border-radius:16px;padding:14px;margin:10px 0';
+  var B = 'background:linear-gradient(90deg,#c9a24a,#e6c36a);color:#0b1626;font-weight:900;border:0;border-radius:12px;padding:10px 16px;cursor:pointer;font-size:14px;text-decoration:none;display:inline-block';
+  var B2 = 'background:#1d3354;color:#e6c36a;font-weight:800;border:1px solid #c9a24a66;border-radius:12px;padding:9px 14px;cursor:pointer;font-size:13px;text-decoration:none;display:inline-block';
+  var D = null, cur = null;
+  function root() { var m = document.getElementById('coModal'); if (!m) { m = document.createElement('div'); m.id = 'coModal'; m.style.cssText = 'position:fixed;inset:0;z-index:9990;background:#0b1626;overflow:auto;direction:rtl;color:#fff;display:none'; document.body.appendChild(m); } return m; }
+  window.coClose = function () { root().style.display = 'none'; document.body.style.overflow = ''; };
+  function shell(h) { var m = root(); m.style.display = 'block'; document.body.style.overflow = 'hidden'; m.innerHTML = '<div style="max-width:560px;margin:0 auto;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:900;font-size:19px;color:#e6c36a">الشركات داخل المدينة</div><button onclick="coClose()" style="' + B2 + '">إغلاق ✕</button></div>' + h + '</div>'; }
+  function img(b, w, r) { if (!b) return ''; var t = b.charAt(0) === 'i' ? 'image/png' : 'image/jpeg'; return '<img src="data:' + t + ';base64,' + b + '" style="width:' + w + 'px;height:' + w + 'px;object-fit:cover;border-radius:' + r + 'px;background:#fff">'; }
+  window.coOpen = function () {
+    shell('<div style="' + C + '">...</div>');
+    fetch(URL_ + '/rest/v1/rpc/companies_public', { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' }, body: '{}' }).then(function (r) { return r.json(); }).then(function (l) { D = l; list(); }).catch(function () { shell('<div style="' + C + '">تعذر التحميل. حاول تاني</div>'); });
+  };
+  function list() {
+    shell(D.length ? D.map(function (c, i) { return '<button onclick="coShow(' + i + ')" style="' + C + ';display:flex;align-items:center;gap:12px;width:100%;text-align:right;color:#fff;cursor:pointer">' + (c.logo ? img(c.logo, 56, 12) : '<div style="width:56px;height:56px;border-radius:12px;background:#1d3354;display:flex;align-items:center;justify-content:center;font-size:24px">🏢</div>') + '<div style="flex:1"><div style="font-weight:900;font-size:16px">' + esc(c.name) + '</div><div style="font-size:12px;color:#cbd5e1">' + c.projects.length + ' مشروع</div></div><span style="color:#e6c36a">◀</span></button>'; }).join('') : '<div style="' + C + ';text-align:center;color:#cbd5e1">قريبًا: الشركات العاملة داخل مدينة سوهاج الجديدة ومشروعاتها</div>');
+  }
+  window.coShow = function (i) {
+    var c = D[i]; cur = i;
+    shell('<button onclick="coList()" style="' + B2 + ';margin-top:8px">◀ كل الشركات</button><div style="' + C + '"><div style="display:flex;gap:12px;align-items:center">' + (c.logo ? img(c.logo, 72, 14) : '') + '<div><div style="font-weight:900;font-size:18px">' + esc(c.name) + '</div></div></div>' + (c.about ? '<div style="margin-top:8px;font-size:13px;color:#cbd5e1;white-space:pre-wrap">' + esc(c.about) + '</div>' : '') + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">' + (c.phone ? '<a href="tel:' + esc(c.phone) + '" style="' + B + '">اتصال</a>' : '') + (c.whatsapp ? '<a target="_blank" rel="noopener" href="https://wa.me/' + String(c.whatsapp).replace(/\D/g, '') + '" style="' + B2 + '">واتساب</a>' : '') + (c.website ? '<a target="_blank" rel="noopener" href="' + esc(/^https?:/.test(c.website) ? c.website : 'https://' + c.website) + '" style="' + B2 + '">الموقع</a>' : '') + '</div></div><div style="font-weight:900;margin-top:6px">المشروعات</div>' +
+      (c.projects.length ? c.projects.map(function (p) { return '<div style="' + C + '">' + (p.photo ? '<img src="data:image/jpeg;base64,' + p.photo + '" style="width:100%;border-radius:12px;margin-bottom:8px">' : '') + '<div style="font-weight:900">' + esc(p.name) + '</div><div style="font-size:12px;color:#e6c36a">' + esc([p.kind, p.status].filter(Boolean).join(' - ')) + '</div>' + (p.location ? '<div style="font-size:12px;color:#cbd5e1">الموقع: ' + esc(p.location) + '</div>' : '') + (p.details ? '<div style="font-size:13px;margin-top:6px;white-space:pre-wrap">' + esc(p.details) + '</div>' : '') + '</div>'; }).join('') : '<div style="' + C + ';color:#cbd5e1;font-size:13px">لا توجد مشروعات مضافة بعد</div>'));
+  };
+  window.coList = list;
+  (function btn() { function add() { if (document.getElementById('coBtn')) return; var h = document.querySelector('header .flex.flex-wrap.items-center.gap-1\\.5'); if (!h) return; var b = document.createElement('button'); b.id = 'coBtn'; b.type = 'button'; b.onclick = window.coOpen; b.style.cssText = 'background:#1d3354;color:#e6c36a;border:1px solid #c9a24a99;font-weight:900;font-size:12px;border-radius:12px;padding:8px 12px;cursor:pointer'; b.textContent = '🏢 الشركات داخل المدينة'; h.insertBefore(b, h.firstChild); } if (document.readyState !== 'loading') add(); else document.addEventListener('DOMContentLoaded', add); })();
+})();

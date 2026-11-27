@@ -22,9 +22,9 @@
   window.premAdmOpen = function () { root().style.display = 'block'; document.body.style.overflow = 'hidden'; draw(); };
   window.premAdmTab = function (t) { tab = t; draw(); };
   function draw() {
-    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات']];
+    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات'], ['co', 'الشركات']];
     root().innerHTML = '<div style="max-width:760px;margin:0 auto;padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">👑 الخدمات المدفوعة (تجريبي)</b><button onclick="premAdmClose()" style="' + B2 + '">إغلاق ✕</button></div><div style="margin:8px 0">' + T.map(function (x) { return '<button onclick="premAdmTab(\'' + x[0] + '\')" style="' + (tab === x[0] ? B : B2) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="pab">...</div></div>';
-    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq })[tab]();
+    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq, co: vCo })[tab]();
   }
   function body(h) { var e = document.getElementById('pab'); if (e) e.innerHTML = h; }
   function box(h) { return '<div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:8px 0;font-size:13px">' + h + '</div>'; }
@@ -62,6 +62,18 @@
         box('<b>سجل النشاط (آخر 200)</b>' + (a.events.length ? a.events.map(function (e) { return '<div style="padding:5px 0;border-bottom:1px dashed #e2e8f0"><span style="color:#64748b">' + d(e.ts) + '</span> - ' + esc(EV[e.event] || e.event) + (e.detail ? ': ' + esc(e.detail) : '') + '</div>'; }).join('') : '<div>لا يوجد نشاط</div>')));
     }).catch(fail);
   };
+
+  /* companies in the city */
+  function shrinkImg(file, max, type) { return new Promise(function (res) { if (!file) return res(null); var r = new FileReader(); r.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL(type, 0.8).split(',')[1]); }; im.onerror = function () { res(null); }; im.src = r.result; }; r.readAsDataURL(file); }); }
+  function vCo() {
+    rpc('admin_companies_list').then(function (l) {
+      body(box('<b>شركة جديدة</b><input id="cn" placeholder="اسم الشركة" style="' + I + '"><textarea id="ca" rows="2" placeholder="نبذة عن الشركة" style="' + I + '"></textarea><input id="cph" placeholder="تليفون" style="' + I + '"><input id="cwa" placeholder="واتساب (بالأرقام مع كود الدولة)" style="' + I + '"><input id="cwb" placeholder="الموقع (اختياري)" style="' + I + '"><label style="font-size:12px">الشعار</label><input id="clg" type="file" accept="image/*" style="' + I + '"><button onclick="coSave()" style="' + B + '">حفظ الشركة</button>') +
+        l.map(function (c) { return box('<b>' + esc(c.name) + '</b> ' + (c.active ? '' : '(مخفية)') + '<div>' + c.projects.length + ' مشروع</div><button onclick="coProjForm(' + c.id + ')" style="' + B + '">+ مشروع</button><button onclick="coDel(\'company\',' + c.id + ')" style="' + BR + '">حذف الشركة</button>' + c.projects.map(function (p) { return '<div style="border-top:1px dashed #cbd5e1;margin-top:6px;padding-top:4px">' + esc(p.name) + ' <button onclick="coDel(\'project\',' + p.id + ')" style="' + BR + '">حذف</button></div>'; }).join('') + '<div id="pf' + c.id + '"></div>'); }).join('')); }).catch(fail);
+  }
+  window.coSave = function () { var g = function (i) { return document.getElementById(i).value; }; shrinkImg(document.getElementById('clg').files[0], 300, 'image/png').then(function (lg) { return rpc('admin_company_save', { p_id: null, p_name: g('cn'), p_logo: lg, p_about: g('ca'), p_phone: g('cph'), p_wa: g('cwa'), p_web: g('cwb'), p_active: true }); }).then(function () { toast('تم الحفظ'); vCo(); }).catch(fail); };
+  window.coProjForm = function (cid) { document.getElementById('pf' + cid).innerHTML = '<input id="pn' + cid + '" placeholder="اسم المشروع" style="' + I + '"><input id="pk' + cid + '" placeholder="النوع (كمبوند/عمارات/تجاري)" style="' + I + '"><input id="pl' + cid + '" placeholder="الموقع داخل المدينة" style="' + I + '"><input id="ps' + cid + '" placeholder="الحالة (تحت الإنشاء/جاهز/تم التسليم)" style="' + I + '"><textarea id="pd' + cid + '" rows="3" placeholder="تفاصيل" style="' + I + '"></textarea><input id="pp' + cid + '" type="file" accept="image/*" style="' + I + '"><button onclick="coProjSave(' + cid + ')" style="' + B + '">حفظ المشروع</button>'; };
+  window.coProjSave = function (cid) { var g = function (p) { return document.getElementById(p + cid).value; }; shrinkImg(document.getElementById('pp' + cid).files[0], 900, 'image/jpeg').then(function (ph) { return rpc('admin_company_project_save', { p_id: null, p_company: cid, p_name: g('pn'), p_kind: g('pk'), p_location: g('pl'), p_status: g('ps'), p_details: g('pd'), p_photo: ph, p_active: true }); }).then(function () { toast('تم الحفظ'); vCo(); }).catch(fail); };
+  window.coDel = function (k, id) { if (!confirm('تأكيد الحذف؟')) return; rpc('admin_company_delete', { p_kind: k, p_id: id }).then(function () { vCo(); }).catch(fail); };
   /* subscribers */
   function vSubs() {
     Promise.all([rpc('admin_prem_subs_list'), loadPlans()]).then(function (r) {
