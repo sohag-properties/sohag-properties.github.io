@@ -5862,7 +5862,7 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     return k.filter(function(x){ if(['citymap','landmarks','news'].indexOf(x)>-1) return false; if(window.__sec2&&window.__sec2.isDeleted&&window.__sec2.isDeleted(x)) return false; return !hiddenSections[x]; });
   }
   function icon(k){ try{ var m=MANAGED_SECTIONS_META.filter(function(s){return s.key===k})[0]; var c=(((hiddenSections.__custom||{}).sections)||{})[k]; return (c&&c.icon)||(m&&m.icon)||'fa-folder'; }catch(_){ return 'fa-folder'; } }
-  var GROUPED = {apartments:true}; /* categories whose ads are grouped by division (compound / neighborhood / other). Add keys to extend. */
+  var GROUPED = {apartments:true,lands:true,houses:true,compounds:true,malls:true,factories:true,landmarks:true}; /* categories whose ads are grouped by division (compound / neighborhood / other). Add keys to extend. */
   function gOf(p){
     var loc=String(p.location||'').trim(), t=String(p.title||''), m;
     if(p.category==='compounds' || /كمبوند|كومباوند|compound/i.test(loc)) return {kind:0,key:'c:'+loc,name:loc||'كمبوند غير محدد',icon:'fa-city',tag:'كمبوند'};
