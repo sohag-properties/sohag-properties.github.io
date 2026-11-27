@@ -6082,7 +6082,7 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
   }
   function val(id){ var e=document.getElementById(id); return e?String(e.value).trim():''; }
   window.__sec2 = {
-    render: render, apply: applySections,
+    render: render, apply: applySections, keys: allKeys, isDeleted: isDeleted,
     add: function(){
       var n=val('sec2NewName'); if(!n){ showToast('اكتب اسم القسم'); return; }
       var dup=allKeys().some(function(k){return meta(k).label===n}); if(dup && !confirm('فيه قسم بنفس الاسم. تضيف برضه؟')) return;

@@ -5745,7 +5745,7 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
   }
   function val(id){ var e=document.getElementById(id); return e?String(e.value).trim():''; }
   window.__sec2 = {
-    render: render, apply: applySections,
+    render: render, apply: applySections, keys: allKeys, isDeleted: isDeleted,
     add: function(){
       var n=val('sec2NewName'); if(!n){ showToast('اكتب اسم القسم'); return; }
       var dup=allKeys().some(function(k){return meta(k).label===n}); if(dup && !confirm('فيه قسم بنفس الاسم. تضيف برضه؟')) return;
@@ -5825,6 +5825,103 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
   mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
   scan(document);
   window.__wm = { off:function(){ try{ hiddenSections.__wm=false; }catch(_){} }, on:function(){ try{ delete hiddenSections.__wm; }catch(_){} } };
+})();
+
+</script>
+<script>
+/* home-v1: collapsible swipeable category blocks on the public home screen */
+(function(){
+  if (window.__home) return; window.__home = true;
+  var css=document.createElement('style'); css.textContent=''
+  +'#homeBlocks{display:flex;flex-direction:column;gap:14px}'
+  +'.hb{background:linear-gradient(160deg,#0b1730,#12264d);border:1px solid rgba(245,197,66,.28);border-radius:22px;overflow:hidden;box-shadow:0 10px 30px -14px rgba(0,0,0,.55);animation:hbIn .5s ease both}'
+  +'@keyframes hbIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}'
+  +'.hb-head{display:flex;align-items:center;gap:8px;padding:12px 14px;color:#fff}'
+  +'.hb-title{flex:1;display:flex;align-items:center;gap:8px;font:900 15px inherit;background:none;border:0;color:#fff;text-align:right;cursor:pointer;padding:0}'
+  +'.hb-title i{color:#f5c542}.hb-cnt{background:rgba(245,197,66,.18);color:#f5c542;border-radius:999px;font-size:11px;padding:2px 9px;font-weight:900}'
+  +'.hb-go{font-size:11px;font-weight:900;color:#0b1730;background:#f5c542;border:0;border-radius:999px;padding:5px 11px;cursor:pointer}'
+  +'.hb-tg{width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#f5c542;cursor:pointer;transition:transform .3s}'
+  +'.hb.closed .hb-tg{transform:rotate(180deg)}'
+  +'.hb-body{display:grid;grid-template-rows:1fr;transition:grid-template-rows .35s ease}.hb.closed .hb-body{grid-template-rows:0fr}.hb-in{overflow:hidden;position:relative}'
+  +'.hb-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 14px 14px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}.hb-row::-webkit-scrollbar{display:none}'
+  +'.hb-card{flex:0 0 78%;max-width:300px;scroll-snap-align:center;background:#fff;border-radius:18px;overflow:hidden;cursor:pointer;position:relative;transition:transform .25s}'
+  +'@media(min-width:640px){.hb-card{flex-basis:280px}}.hb-card:active{transform:scale(.98)}'
+  +'.hb-ph{position:relative;aspect-ratio:4/3;background:#cbd5e1;overflow:hidden}.hb-ph img{width:100%;height:100%;object-fit:cover;display:block;animation:hbFade .5s ease}@keyframes hbFade{from{opacity:0}to{opacity:1}}'
+  +'.hb-tag{position:absolute;top:8px;right:8px;background:rgba(11,23,48,.85);color:#f5c542;font:900 10px inherit;padding:3px 9px;border-radius:999px}'
+  +'.hb-sold{position:absolute;top:8px;left:8px;background:#dc2626;color:#fff;font:900 10px inherit;padding:3px 9px;border-radius:999px}'
+  +'.hb-info{padding:10px 12px 12px;color:#0f172a}.hb-t{font:900 13px/1.5 inherit;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px}'
+  +'.hb-p{margin-top:6px;font:900 15px inherit;color:#047857}.hb-m{font:700 11px inherit;color:#64748b;margin-top:2px}'
+  +'.hb-ar{position:absolute;top:38%;z-index:3;width:32px;height:32px;border-radius:50%;border:0;background:rgba(11,23,48,.8);color:#f5c542;cursor:pointer;display:none}@media(hover:hover) and (min-width:640px){.hb-ar{display:block}}.hb-ar.l{left:8px}.hb-ar.r{right:8px}'
+  +'.hb-dots{display:flex;justify-content:center;gap:5px;padding:0 0 10px}.hb-dots b{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .3s}.hb-dots b.on{background:#f5c542;width:16px;border-radius:4px}'
+  +'.hb-empty{color:#94a3b8;font:700 12px inherit;padding:6px 14px 14px}'
+  +'@media(prefers-reduced-motion:reduce){.hb,.hb-row,.hb-body{animation:none;transition:none;scroll-behavior:auto}}';
+  document.head.appendChild(css);
+  var sig='', timers=[], io=null;
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function isOpen(k){ var v=localStorage.getItem('home_open_'+k); return v!=='0'; }
+  function vis(){ return (properties||[]).filter(function(p){ return p && !p.hidden && !hiddenSections[p.category]; }).sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);}); }
+  function sectionKeys(){
+    var k=(window.__sec2&&window.__sec2.keys)?window.__sec2.keys():['lands','apartments','compounds','houses','malls'];
+    return k.filter(function(x){ if(['citymap','landmarks','news'].indexOf(x)>-1) return false; if(window.__sec2&&window.__sec2.isDeleted&&window.__sec2.isDeleted(x)) return false; return !hiddenSections[x]; });
+  }
+  function icon(k){ try{ var m=MANAGED_SECTIONS_META.filter(function(s){return s.key===k})[0]; var c=(((hiddenSections.__custom||{}).sections)||{})[k]; return (c&&c.icon)||(m&&m.icon)||'fa-folder'; }catch(_){ return 'fa-folder'; } }
+  function card(p,first){
+    var im=(p.images&&p.images[0])||''; var price=Number(p.totalPrice||0);
+    return '<div class="hb-card" data-id="'+esc(p.id)+'" onclick="openImageGallery(\''+esc(p.id)+'\',0)">'
+      +'<div class="hb-ph">'+(im?'<img src="'+esc(im)+'" '+(first?'':'loading="lazy" ')+'decoding="async" referrerpolicy="no-referrer" alt="">':'')+'<span class="hb-tag">'+esc(p.subcategory||getCategoryLabel(p.category))+'</span>'+(p.sold?'<span class="hb-sold">تم البيع</span>':'')+'</div>'
+      +'<div class="hb-info"><div class="hb-t">'+esc(p.title)+'</div><div class="hb-p">'+(price>0?price.toLocaleString('ar-EG')+' ج.م':'اتصل للسعر')+'</div><div class="hb-m">'+esc(p.location||'')+(p.area?' • '+esc(p.area)+' م²':'')+'</div></div></div>';
+  }
+  function block(key,label,ic,list,extra){
+    var open=isOpen(key);
+    return '<section class="hb'+(open?'':' closed')+'" data-k="'+esc(key)+'"><div class="hb-head"><button class="hb-title" onclick="window.__home.go(\''+esc(key)+'\')"><i class="fa-solid '+esc(ic)+'"></i><span>'+esc(label)+'</span><span class="hb-cnt">'+list.length+'</span></button>'+(extra||'')+'<button class="hb-tg" aria-label="فتح/غلق" onclick="window.__home.tg(\''+esc(key)+'\')"><i class="fa-solid fa-chevron-up"></i></button></div>'
+      +'<div class="hb-body"><div class="hb-in">'+(list.length?'<button class="hb-ar r" onclick="window.__home.step(\''+esc(key)+'\',-1)"><i class="fa-solid fa-chevron-right"></i></button><button class="hb-ar l" onclick="window.__home.step(\''+esc(key)+'\',1)"><i class="fa-solid fa-chevron-left"></i></button>':'')
+      +'<div class="hb-row" data-k="'+esc(key)+'">'+list.slice(0,10).map(function(p,i){return card(p,i<2&&open);}).join('')+'</div><div class="hb-dots" data-k="'+esc(key)+'">'+list.slice(0,10).map(function(_,i){return '<b'+(i===0?' class="on"':'')+'></b>';}).join('')+'</div></div></div></section>';
+  }
+  function wire(root){
+    timers.forEach(clearInterval); timers=[]; if(io) io.disconnect();
+    io=('IntersectionObserver' in window)?new IntersectionObserver(function(es){ es.forEach(function(e){ e.target.__vis=e.isIntersecting; }); },{threshold:.3}):null;
+    root.querySelectorAll('.hb-row').forEach(function(row){
+      var k=row.getAttribute('data-k'), dots=root.querySelector('.hb-dots[data-k="'+k+'"]'); row.__vis=true; if(io) io.observe(row);
+      var paused=false; ['touchstart','pointerdown','mouseenter','focusin'].forEach(function(ev){ row.addEventListener(ev,function(){paused=true;},{passive:true}); }); ['mouseleave','touchend'].forEach(function(ev){ row.addEventListener(ev,function(){ setTimeout(function(){paused=false;},4000); },{passive:true}); });
+      function cur(){ var cs=row.children, c=row.getBoundingClientRect(), best=0, bd=1e9; for(var i=0;i<cs.length;i++){ var r=cs[i].getBoundingClientRect(), d=Math.abs((r.left+r.width/2)-(c.left+c.width/2)); if(d<bd){bd=d;best=i;} } return best; }
+      row.addEventListener('scroll',function(){ clearTimeout(row.__st); row.__st=setTimeout(function(){ var i=cur(); if(dots) Array.prototype.forEach.call(dots.children,function(d,j){ d.className=j===i?'on':''; }); },80); },{passive:true});
+      row.__cur=cur;
+      if(row.children.length>1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+        timers.push(setInterval(function(){ if(paused||document.hidden||!row.__vis||row.closest('.hb.closed')) return; var i=cur()+1; if(i>=row.children.length) i=0; row.children[i].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); },4500+Math.floor(Math.random()*1200)));
+      }
+    });
+  }
+  function render(){
+    var box=document.getElementById('homeBlocks'); if(!box) return;
+    var all=vis(), keys=sectionKeys();
+    var s=JSON.stringify([all.map(function(p){return [p.id,p._ts||'',p.category,p.subcategory,(p.images||[])[0]&&1,p.sold]}),keys,hiddenSections.__labels||null,hiddenSections.__custom||null,keys.map(isOpen),!!window.__homeAll]);
+    if(s===sig && box.children.length) return; sig=s;
+    var h=block('latest','أحدث العروض','fa-fire',all,'<button class="hb-go" onclick="window.__home.all()">'+(window.__homeAll?'إخفاء القائمة':'عرض الكل')+'</button>');
+    keys.forEach(function(k){ var l=all.filter(function(p){return p.category===k}); if(l.length) h+=block(k,getCategoryLabel(k),icon(k),l); });
+    box.innerHTML=h; wire(box);
+  }
+  function apply(){
+    var sec=document.getElementById('propertiesSection'); if(!sec) return;
+    var box=document.getElementById('homeBlocks');
+    if(!box){ box=document.createElement('div'); box.id='homeBlocks'; sec.insertBefore(box,sec.firstChild); }
+    var q=((document.getElementById('searchInput')||{}).value||'').trim(), sub=(document.getElementById('filterSubcat')||{}).value||'', st=(document.getElementById('filterStatus')||{}).value||'';
+    var home=(typeof currentTab!=='undefined'&&currentTab==='latest')&&!q&&!sub&&!st;
+    var head=sec.children[1], grid=document.getElementById('propertiesGrid'); // children: homeBlocks, heading row, grid
+    box.style.display=home?'':'none';
+    if(head) head.style.display=(home&&!window.__homeAll)?'none':'';
+    if(grid) grid.style.display=(home&&!window.__homeAll)?'none':'';
+    if(home) render();
+  }
+  var _h=handleSearchFilter; handleSearchFilter=function(){ var r=_h.apply(this,arguments); try{apply();}catch(e){console.warn('home',e);} return r; };
+  var _s=switchTab; switchTab=function(t){ if(t==='latest') window.__homeAll=false; var r=_s.apply(this,arguments); try{apply();}catch(e){} return r; };
+  window.__home={
+    go:function(k){ if(k==='latest'){ window.__home.all(); return; } switchTab(k); window.scrollTo({top:0,behavior:'smooth'}); },
+    tg:function(k){ localStorage.setItem('home_open_'+k,isOpen(k)?'0':'1'); sig=''; var b=document.querySelector('.hb[data-k="'+k+'"]'); if(b) b.classList.toggle('closed'); },
+    step:function(k,d){ var row=document.querySelector('.hb-row[data-k="'+k+'"]'); if(!row) return; var i=row.__cur()+d; i=Math.max(0,Math.min(row.children.length-1,i)); row.children[i].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); },
+    all:function(){ window.__homeAll=!window.__homeAll; sig=''; apply(); },
+    render:render
+  };
+  try{ apply(); }catch(e){}
 })();
 
 </script>
