@@ -5783,52 +5783,6 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
 
 </script>
 <script>
-/* watermark-v1: stamps every listing photo on display. Originals in storage/data are never changed. */
-(function(){
-  if (window.__wm) return; window.__wm = true;
-  var L1='سوهاج الجديدة', L2='إدارة أستاذ محمد علي أبو الحمد', L3='01112303616';
-  var cache={}, busy={};
-  function enabled(){ try{ return !(hiddenSections && hiddenSections.__wm === false); }catch(_){ return true; } }
-  function isPhoto(u){ return typeof u==='string' && /\/storage\/v1\/object\/public\//.test(u) && !/\/(icons?|assets|brand)\//.test(u); }
-  function stamp(src){
-    return new Promise(function(res){
-      if(cache[src]) return res(cache[src]);
-      fetch(src,{mode:'cors',cache:'force-cache'}).then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
-        .then(function(b){ return createImageBitmap(b); })
-        .then(function(im){ try{
-        var w=im.width, h=im.height; if(!w||!h) return res(null);
-        var max=1600, k=Math.min(1,max/Math.max(w,h)); w=Math.round(w*k); h=Math.round(h*k);
-        var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
-        var fs=Math.max(14,Math.round(Math.min(w,h)/17));
-        // faint diagonal repeat (hard to crop out)
-        x.save(); x.globalAlpha=.13; x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle'; x.font='900 '+Math.round(fs*1.1)+'px Tajawal,Cairo,Arial,sans-serif'; x.translate(w/2,h/2); x.rotate(-Math.PI/6);
-        for(var yy=-h; yy<=h; yy+=fs*4.2){ for(var xx=-w; xx<=w; xx+=fs*9){ x.fillText(L1,xx+((Math.round(yy/(fs*4.2))%2)?fs*4.5:0),yy); } }
-        x.restore();
-        // bottom band
-        var bh=Math.round(fs*3.7), by=Math.round(h*0.5-bh/2); x.fillStyle='rgba(8,18,40,.6)'; x.fillRect(0,by,w,bh);
-        x.textAlign='center'; x.textBaseline='middle'; x.direction='rtl'; x.shadowColor='rgba(0,0,0,.8)'; x.shadowBlur=4;
-        x.fillStyle='#f5c542'; x.font='900 '+fs+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L1,w/2,by+fs*.8);
-        x.fillStyle='#ffffff'; x.font='800 '+Math.round(fs*.8)+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L2,w/2,by+fs*1.85);
-        x.fillStyle='#ffffff'; x.direction='ltr'; x.font='900 '+Math.round(fs*.85)+'px Arial,sans-serif'; x.fillText(L3,w/2,by+fs*2.95);
-        cache[src]=c.toDataURL('image/jpeg',.86); res(cache[src]);
-      }catch(e){ window.__wmerr=String(e); res(null); } })
-        .catch(function(e){ window.__wmerr='load '+String(e); res(null); });
-    });
-  }
-  function handle(img){
-    if(!enabled()) return; var s=img.getAttribute('src'); if(!isPhoto(s) || img.dataset.wmDone===s) return;
-    img.dataset.wmOrig=s; if(img.__wmBusy===s) return; img.__wmBusy=s;
-    setTimeout(function(){ stamp(s).then(function(u){ img.__wmBusy=null; if(u && img.getAttribute('src')===s){ img.dataset.wmDone=u; img.setAttribute('src',u); } }); },700);
-  }
-  function scan(root){ (root.querySelectorAll?root.querySelectorAll('img'):[]).forEach(handle); if(root.tagName==='IMG') handle(root); }
-  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type==='attributes'){ var t=m.target; if(t.tagName==='IMG'){ var s=t.getAttribute('src'); if(t.dataset.wmDone===s) return; handle(t);} } else m.addedNodes.forEach(function(n){ if(n.nodeType===1) scan(n); }); }); });
-  mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
-  scan(document);
-  window.__wm = { off:function(){ try{ hiddenSections.__wm=false; }catch(_){} }, on:function(){ try{ delete hiddenSections.__wm; }catch(_){} } };
-})();
-
-</script>
-<script>
 /* home-v1: collapsible swipeable category blocks on the public home screen */
 (function(){
   if (window.__home) return; window.__home = true;
@@ -5878,9 +5832,6 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
       function cur(){ var cs=row.children, c=row.getBoundingClientRect(), best=0, bd=1e9; for(var i=0;i<cs.length;i++){ var r=cs[i].getBoundingClientRect(), d=Math.abs((r.left+r.width/2)-(c.left+c.width/2)); if(d<bd){bd=d;best=i;} } return best; }
       row.addEventListener('scroll',function(){ clearTimeout(row.__st); row.__st=setTimeout(function(){ var i=cur(); if(dots) Array.prototype.forEach.call(dots.children,function(d,j){ d.classList.toggle('on',j===i); }); },80); },{passive:true});
       row.__cur=cur;
-      if(row.children.length>1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-        timers.push(setInterval(function(){ if(paused||document.hidden||!row.__vis||row.closest('.hb.closed')) return; var i=cur()+1; if(i>=row.children.length) i=0; row.children[i].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}); },4500+Math.floor(Math.random()*1200)));
-      }
     });
   }
   function render(){
@@ -5914,6 +5865,48 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     render:render
   };
   try{ apply(); }catch(e){}
+})();
+
+</script>
+<script>
+/* watermark-v1: stamps every listing photo on display. Originals in storage/data are never changed. */
+(function(){
+  if (window.__wm) return; window.__wm = true;
+  var L1='سوهاج الجديدة', L2='إدارة أستاذ محمد علي أبو الحمد', L3='01112303616';
+  var cache={}, busy={};
+  function enabled(){ try{ return !(hiddenSections && hiddenSections.__wm === false); }catch(_){ return true; } }
+  function isPhoto(u){ return typeof u==='string' && /\/storage\/v1\/object\/public\//.test(u) && !/\/(icons?|assets|brand)\//.test(u); }
+  function stamp(src){
+    return new Promise(function(res){
+      if(cache[src]) return res(cache[src]);
+      fetch(src,{mode:'cors',cache:'force-cache'}).then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+        .then(function(b){ return createImageBitmap(b); })
+        .then(function(im){ try{
+        var w=im.width, h=im.height; if(!w||!h) return res(null);
+        var max=1600, k=Math.min(1,max/Math.max(w,h)); w=Math.round(w*k); h=Math.round(h*k);
+        var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
+        var fs=Math.max(10,Math.round(Math.min(w,h)/34));
+        // bottom band
+        var bh=Math.round(fs*3.7), by=Math.round(h*0.64-bh/2); x.fillStyle='rgba(8,18,40,.5)'; x.fillRect(0,by,w,bh);
+        x.textAlign='center'; x.textBaseline='middle'; x.direction='rtl'; x.shadowColor='rgba(0,0,0,.8)'; x.shadowBlur=4;
+        x.fillStyle='#f5c542'; x.font='900 '+fs+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L1,w/2,by+fs*.8);
+        x.fillStyle='#ffffff'; x.font='800 '+Math.round(fs*.8)+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L2,w/2,by+fs*1.85);
+        x.fillStyle='#ffffff'; x.direction='ltr'; x.font='900 '+Math.round(fs*.85)+'px Arial,sans-serif'; x.fillText(L3,w/2,by+fs*2.95);
+        cache[src]=c.toDataURL('image/jpeg',.86); res(cache[src]);
+      }catch(e){ window.__wmerr=String(e); res(null); } })
+        .catch(function(e){ window.__wmerr='load '+String(e); res(null); });
+    });
+  }
+  function handle(img){
+    if(!enabled()) return; var s=img.getAttribute('src'); if(!isPhoto(s) || img.dataset.wmDone===s) return;
+    img.dataset.wmOrig=s; if(img.__wmBusy===s) return; img.__wmBusy=s;
+    setTimeout(function(){ stamp(s).then(function(u){ img.__wmBusy=null; if(u && img.getAttribute('src')===s){ img.dataset.wmDone=u; img.setAttribute('src',u); } }); },700);
+  }
+  function scan(root){ (root.querySelectorAll?root.querySelectorAll('img'):[]).forEach(handle); if(root.tagName==='IMG') handle(root); }
+  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type==='attributes'){ var t=m.target; if(t.tagName==='IMG'){ var s=t.getAttribute('src'); if(t.dataset.wmDone===s) return; handle(t);} } else m.addedNodes.forEach(function(n){ if(n.nodeType===1) scan(n); }); }); });
+  mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+  scan(document);
+  window.__wm = { off:function(){ try{ hiddenSections.__wm=false; }catch(_){} }, on:function(){ try{ delete hiddenSections.__wm; }catch(_){} } };
 })();
 
 </script>
