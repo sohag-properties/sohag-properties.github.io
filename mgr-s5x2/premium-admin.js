@@ -22,9 +22,9 @@
   window.premAdmOpen = function () { root().style.display = 'block'; document.body.style.overflow = 'hidden'; draw(); };
   window.premAdmTab = function (t) { tab = t; draw(); };
   function draw() {
-    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات'], ['co', 'الشركات'], ['views', 'المشاهدات']];
+    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات'], ['co', 'الشركات'], ['views', 'المشاهدات'], ['units', 'حالة الوحدات']];
     root().innerHTML = '<div style="max-width:760px;margin:0 auto;padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">👑 الخدمات المدفوعة (تجريبي)</b><button onclick="premAdmClose()" style="' + B2 + '">إغلاق ✕</button></div><div style="margin:8px 0">' + T.map(function (x) { return '<button onclick="premAdmTab(\'' + x[0] + '\')" style="' + (tab === x[0] ? B : B2) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="pab">...</div></div>';
-    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq, co: vCo, views: vViews })[tab]();
+    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq, co: vCo, views: vViews, units: vUnits })[tab]();
   }
   function body(h) { var e = document.getElementById('pab'); if (e) e.innerHTML = h; }
   function box(h) { return '<div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:8px 0;font-size:13px">' + h + '</div>'; }
@@ -65,6 +65,17 @@
 
   /* companies in the city */
   function shrinkImg(file, max, type) { return new Promise(function (res) { if (!file) return res(null); var r = new FileReader(); r.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL(type, 0.8).split(',')[1]); }; im.onerror = function () { res(null); }; im.src = r.result; }; r.readAsDataURL(file); }); }
+  function vUnits() {
+    rpc('admin_units_list').then(function (l) {
+      body(box('<b>حالة الوحدات (داخلي للإدارة فقط، لا تظهر للزوار)</b><div style="font-size:11px;color:#64748b">زر "احجز الان" يفضل شغال للزوار في كل الحالات.</div>') + l.map(function (p) {
+        var c = { reserved: 0, sold: 0 }; p.units.forEach(function (u) { if (u.status) c[u.status]++; });
+        return box('<b>' + esc(p.company) + ' - ' + esc(p.name) + '</b><div style="margin:4px 0;font-size:12px">متاح: ' + (p.units.length - c.reserved - c.sold) + ' • تم الحجز: ' + c.reserved + ' • مباع: ' + c.sold + '</div>' + p.units.map(function (u) {
+          var bg = u.status === 'sold' ? '#fee2e2' : u.status === 'reserved' ? '#fef3c7' : '#fff';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #e2e8f0;padding:5px;background:' + bg + '"><span>' + (u.type === 'shop' ? 'محل ' : 'مكتب ') + u.no + ' <span style="color:#64748b;font-size:11px">(' + Number(u.total).toLocaleString('en-US') + ' ج)</span></span><select onchange="unitSet(' + p.project + ',\'' + u.key + '\',this.value)" style="padding:5px;border:1px solid #cbd5e1;border-radius:8px"><option value=""' + (u.status === '' ? ' selected' : '') + '>متاح</option><option value="reserved"' + (u.status === 'reserved' ? ' selected' : '') + '>تم الحجز</option><option value="sold"' + (u.status === 'sold' ? ' selected' : '') + '>مباع</option></select></div>';
+        }).join(''));
+      }).join('')); }).catch(fail);
+  }
+  window.unitSet = function (pid, key, st) { rpc('admin_unit_status_set', { p_project: pid, p_key: key, p_status: st }).then(function () { toast('تم الحفظ'); vUnits(); }).catch(fail); };
   function vViews() {
     rpc('admin_views_ranking').then(function (d) {
       var P = (typeof properties !== 'undefined' ? properties : []), by = {}; P.forEach(function (p) { by[String(p.id)] = p; });
