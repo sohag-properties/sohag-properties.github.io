@@ -200,9 +200,9 @@ var d=new Date(),t='سوهاج الجديدة • '+(id||'زائر')+' • '+d.g
 var box=ge('protectMark');if(!box)return;var h='';for(var r=0;r<14;r++){for(var c=0;c<4;c++){h+='<span style="position:absolute;left:'+(c*30-8+(r%2)*15)+'%;top:'+(r*9)+'%;transform:rotate(-24deg);white-space:nowrap;font:800 12px sans-serif;color:rgba(128,128,128,.17)">'+t+'</span>'}}box.innerHTML=h}
 var SHOW_TILE_MARK=false; /* tiled page overlay removed per owner 7:47pm; set true to restore */ if(SHOW_TILE_MARK)mark();})();</script>
 <div id="splashScreen"><img src="icon-192.png" alt=""><div class="t1">أهلاً بكم في سوهاج الجديدة</div><div class="t2">إدارة أ / محمد علي أبوالحمد<br>للتسويق والاستثمار العقاري</div><div class="bar"><i></i></div></div>
-<script>(function(){var el=document.getElementById('splashScreen');try{var l=Number(localStorage.getItem('sohag_splash_ts')||0);if(Date.now()-l<30*60*1000){el.parentNode.removeChild(el);return;}localStorage.setItem('sohag_splash_ts',String(Date.now()));}catch(e){}
+<script>(function(){var SPLASH_MS=5000; /* <<< مدة شاشة البداية بالمللي ثانية (5000 = 5 ثواني). غيّر الرقم ده بس */ var el=document.getElementById('splashScreen');try{var bi=el.querySelector('.bar i');if(bi)bi.style.animationDuration=(SPLASH_MS/1000)+'s';}catch(e){}try{var l=Number(localStorage.getItem('sohag_splash_ts')||0);if(Date.now()-l<30*60*1000){el.parentNode.removeChild(el);return;}localStorage.setItem('sohag_splash_ts',String(Date.now()));}catch(e){}
 function done(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},500);}
-setTimeout(done,2100);el.addEventListener('click',done);})();</script>
+setTimeout(done,SPLASH_MS);el.addEventListener('click',done);})();</script>
 
 
   <!-- ==================== 1. شريط التنبيهات العاجلة ==================== -->
