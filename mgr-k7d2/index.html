@@ -154,7 +154,8 @@ html:not(.panel-home) #panelHome { display:none!important }
 html.panel-home #panelBackBtn { display:none!important }
 html.panel-home header > div:first-child > div:nth-child(2) > *:not(#viewModeToggleBtn) { display:none!important }
 html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { display:none!important }
-html:not(.stats-open) #adminStatsStrip { display:none!important }
+#adminStatsStrip { display:none!important }
+.acc-body{max-height:0;overflow:hidden;visibility:hidden;transition:max-height .3s ease,visibility .3s}.acc-body.open{max-height:3000px;visibility:visible}
 </style></head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col transition-colors duration-300">
 <div id="lockScreen"><img id="lockLogo" src="icon-192.png" alt=""><div>سوهاج الجديدة</div></div>
@@ -478,16 +479,16 @@ html:not(.stats-open) #adminStatsStrip { display:none!important }
 </div>
 <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
 
-    <section id="panelHome" class="space-y-4">
-      <div class="bg-navy-900 text-white p-4 rounded-2xl border border-gold-500/40">
-        <h2 class="text-lg font-black text-gold-400 flex items-center gap-2"><i class="fa-solid fa-gauge-high"></i> لوحة التحكم</h2>
-        <p class="text-xs text-slate-300 mt-1">إدارة كاملة: العقارات، الطلبات، الأقسام، الأخبار، المشرفين. كل أمر بيتأكد من السحابة قبل ما يقول "تم".</p>
-        <div id="panelCounts" class="flex flex-wrap gap-2 mt-3 text-xs font-black"></div>
-        <button type="button" id="statsToggleBtn" onclick="toggleStatsStrip()" class="mt-3 bg-navy-700 text-gold-300 text-xs font-black px-3 py-1.5 rounded-xl cursor-pointer">📊 إحصائيات التطبيق ▾</button>
+    <section id="panelHome" class="space-y-3">
+      <div id="panelPushBar" class="rounded-2xl border border-emerald-500/50 bg-navy-900 text-white p-3 text-xs font-black"></div>
+      <div class="flex items-center justify-between gap-2 bg-navy-900 text-white px-4 py-3 rounded-2xl border border-gold-500/40">
+        <h2 class="text-base font-black text-gold-400 flex items-center gap-2"><i class="fa-solid fa-gauge-high"></i> لوحة التحكم</h2>
+        <span class="flex gap-2">
+          <button type="button" onclick="panelAccAll(false)" class="bg-gold-500 text-navy-950 text-xs font-black px-3 py-1.5 rounded-xl cursor-pointer">طي الكل ▲</button>
+          <button type="button" onclick="panelAccAll(true)" class="bg-navy-700 text-gold-300 text-xs font-black px-3 py-1.5 rounded-xl cursor-pointer">فتح الكل ▼</button>
+        </span>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" id="panelTiles"></div>
-      <div class="text-xs font-black text-slate-600">عقارات كل قسم:</div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2" id="panelSectionTiles"></div>
+      <div id="panelAcc" class="space-y-2"></div>
     </section>
 
 
@@ -4765,19 +4766,19 @@ html:not(.stats-open) #adminStatsStrip { display:none!important }
     }
 
     function handleAdminAccess() {
-      if (isAdminMode) {
-        logAdminAction('تسجيل خروج', 'خروج من لوحة الإدارة');
-        isAdminMode = false;
-        currentAdminUser = null;
-        applyViewModeUI();
-        handleSearchFilter();
-        showToast('تم تسجيل الخروج من لوحة الإدارة');
-      } else {
-        document.getElementById('adminPinInput').value = '';
-        document.getElementById('adminLoginModal').classList.remove('hidden');
-        document.getElementById('adminLoginModal').classList.add('flex');
-        setTimeout(() => document.getElementById('adminPinInput').focus(), 100);
-      }
+      // الدخول بالسبع ضغطات + كلمة السر فقط. الخروج يقفل التطبيق بالكامل.
+      if (isAdminMode) mgrLockExit();
+    }
+    async function mgrLockExit() {
+      if (window.__locking) return;
+      window.__locking = true;
+      try { showToast('جاري الحفظ والقفل...'); } catch (_) {}
+      try { logAdminAction('تسجيل خروج', 'خروج من لوحة الإدارة'); } catch (_) {}
+      try { if (cloudHasSession()) await Promise.race([cloudFlushAll(), new Promise(r => setTimeout(r, 3000))]); } catch (_) {}
+      try { cloudAuthSet(null); } catch (_) {}
+      try { sessionStorage.removeItem('mgr_unlocked'); sessionStorage.removeItem('mgr_last_pend'); sessionStorage.removeItem('mgr_last_ac'); } catch (_) {}
+      isAdminMode = false; currentAdminUser = null;
+      location.replace(location.pathname);
     }
     let adminAfterCloud = false;
     function enterAdminFromCloud(u) {
@@ -5621,8 +5622,22 @@ window.addEventListener('DOMContentLoaded', function(){
     function panelHomeShow() { document.documentElement.classList.add('panel-home'); panelRender(); window.scrollTo(0, 0); }
     function panelGo(tab) { document.documentElement.classList.remove('panel-home'); switchTab(tab); window.scrollTo(0, 0); }
     function panelAct(fn) { try { fn(); } catch (e) { showToast('حصل خطأ — حاول تاني'); } }
+    window.__acc = window.__acc || {};
+    function panelAccToggle(k, btn) {
+      window.__acc[k] = !window.__acc[k];
+      const body = btn.nextElementSibling;
+      if (body) body.classList.toggle('open', !!window.__acc[k]);
+      btn.setAttribute('aria-expanded', window.__acc[k] ? 'true' : 'false');
+      const ch = btn.querySelector('.acc-ch'); if (ch) ch.textContent = window.__acc[k] ? '▴' : '▾';
+      window.__panelSig = null;
+    }
+    function panelAccAll(open) {
+      window.__acc = {};
+      if (open) ['counts', 'stats', 'props', 'inbox', 'content', 'cat', 'admin'].forEach(k => { window.__acc[k] = true; });
+      window.__panelSig = null; panelRender();
+    }
     function panelRender() {
-      const t = document.getElementById('panelTiles'); if (!t) return;
+      const box = document.getElementById('panelAcc'); if (!box) return;
       const list = (typeof properties !== 'undefined' && properties) || [];
       const hid = list.filter(p => p.hidden).length, sold = list.filter(p => p.sold).length, opp = list.filter(p => typeof oppActive === 'function' && oppActive(p)).length;
       let pend = (document.getElementById('headerPendingCountBadge') || {}).textContent || '0';
@@ -5633,27 +5648,25 @@ window.addEventListener('DOMContentLoaded', function(){
       } catch (_) {}
       let ac = window.__adminCounts || null;
       try { if (ac) sessionStorage.setItem('mgr_last_ac', JSON.stringify(ac)); else { const sa = sessionStorage.getItem('mgr_last_ac'); if (sa) ac = JSON.parse(sa); } } catch (_) {}
-      const pushOn = (typeof Notification !== 'undefined' && Notification.permission === 'granted' && localStorage.getItem('mgr_push_on') === '1');
-      const c = document.getElementById('panelCounts');
-      if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...', "panelGo('chats')"], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend, "panelGo('pending')"]].map(x => (x[2] ? '<button type="button" onclick="' + x[2] + '" class="bg-amber-600 text-white rounded-xl px-3 py-1.5 cursor-pointer">' + x[0] + ': <b>' + x[1] + '</b> ◀</button>' : '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>')).join('');
-      const tiles = [
-        ['fa-plus', 'إضافة عقار', "panelAct(openPropertyModal)", 'bg-emerald-600'],
-        ['fa-list', 'كل العقارات', "panelGo('latest')", 'bg-navy-800'],
-        ['fa-inbox', 'عقارات واردة من العملاء (' + pend + ')', "panelGo('pending')", 'bg-amber-600'],
-        ['fa-comments', 'طلبات ومحادثات العملاء' + (ac ? ' (' + ac.openRequests + ' طلب • ' + ac.waitingChats + ' منتظر)' : ''), "panelGo('chats')", 'bg-teal-700'],
-        ['fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', "panelAct(openSectionsManager)", 'bg-purple-700'],
-        ['fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'],
-        ['fa-shop', 'المولات', "panelAct(openMallsManager)", 'bg-navy-700'],
-        ['fa-user-shield', 'المشرفون', "panelAct(openAdminsManager)", 'bg-amber-700'],
-        ['fa-cloud', 'السحابة', "panelAct(showCloudLogin)", 'bg-sky-800'],
-        ['fa-bell', pushOn ? 'إشعارات الإدارة: شغالة ✓' : 'إشعارات الإدارة: اضغط للتشغيل', "panelAct(adminPushSetup)", 'bg-emerald-700'],
-        ['fa-bullhorn', 'رسالة عاجلة', "panelAct(openUrgentModal)", 'bg-red-700'],
-        ['fa-key', 'تغيير كلمة السر', "panelAct(openPwdChange)", 'bg-slate-700'],
-        ['fa-download', 'نسخة احتياطية', "panelAct(exportBackup)", 'bg-slate-600']
+      const chips = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...', "panelGo('chats')"], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend, "panelGo('pending')"]]
+        .map(x => (x[2] ? '<button type="button" onclick="' + x[2] + '" class="bg-amber-600 text-white rounded-xl px-3 py-1.5 cursor-pointer">' + x[0] + ': <b>' + x[1] + '</b> ◀</button>' : '<span class="bg-navy-700 text-white rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>')).join('');
+      const tile = (ic, label, fn, bg) => '<button type="button" onclick="' + fn + '" class="' + bg + ' text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-xs font-black cursor-pointer shadow"><i class="fa-solid ' + ic + ' text-xl text-gold-300"></i><span>' + label + '</span></button>';
+      const grid = (arr) => '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">' + arr.join('') + '</div>';
+      let statsHtml = '<span class="text-slate-500">...</span>';
+      try { const sv = document.getElementById('adminStatsStrip'); if (sv && sv.firstElementChild) statsHtml = sv.firstElementChild.innerHTML.replace(/ id="[^"]*"/g, ''); } catch (_) {}
+      const cats = ['lands', 'apartments', 'compounds', 'houses', 'malls', 'factories'].map(k => '<button type="button" onclick="panelGo(\'' + k + '\')" class="bg-white border border-slate-300 rounded-xl p-2 text-[11px] font-black text-navy-900 cursor-pointer' + (hiddenSections[k] ? ' opacity-50' : '') + '">' + getCategoryLabel(k) + ' (' + list.filter(p => p.category === k).length + ')' + (hiddenSections[k] ? ' • مخفي' : '') + '</button>').join('');
+      const groups = [
+        ['counts', '📊 الأرقام والعدادات', '', '<div class="flex flex-wrap gap-2 text-xs font-black">' + chips + '</div>'],
+        ['stats', '📈 إحصائيات التطبيق', '', '<div class="flex flex-wrap gap-2 text-xs font-bold text-white bg-navy-900 rounded-xl p-3">' + statsHtml + '</div>'],
+        ['props', '🏠 العقارات', '', grid([tile('fa-plus', 'إضافة عقار', 'panelAct(openPropertyModal)', 'bg-emerald-600'), tile('fa-list', 'كل العقارات', "panelGo('latest')", 'bg-navy-800')])],
+        ['inbox', '📩 الطلبات والمحادثات', (pend !== '0' || (ac && ac.openRequests)) ? ' (' + pend + ' واردة • ' + (ac ? ac.openRequests : '...') + ' طلب)' : '', grid([tile('fa-inbox', 'عقارات واردة من العملاء (' + pend + ')', "panelGo('pending')", 'bg-amber-600'), tile('fa-comments', 'طلبات ومحادثات العملاء' + (ac ? ' (' + ac.openRequests + ' طلب • ' + ac.waitingChats + ' منتظر)' : ''), "panelGo('chats')", 'bg-teal-700')])],
+        ['content', '🗂️ الأقسام والمحتوى', '', grid([tile('fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', 'panelAct(openSectionsManager)', 'bg-purple-700'), tile('fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'), tile('fa-shop', 'المولات', 'panelAct(openMallsManager)', 'bg-navy-700')])],
+        ['cat', '📋 عقارات كل قسم', '', '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">' + cats + '</div>'],
+        ['admin', '⚙️ الإدارة والإعدادات', '', grid([tile('fa-user-shield', 'المشرفون', 'panelAct(openAdminsManager)', 'bg-amber-700'), tile('fa-cloud', 'السحابة', 'panelAct(showCloudLogin)', 'bg-sky-800'), tile('fa-bullhorn', 'رسالة عاجلة', 'panelAct(openUrgentModal)', 'bg-red-700'), tile('fa-key', 'تغيير كلمة السر', 'panelAct(openPwdChange)', 'bg-slate-700'), tile('fa-download', 'نسخة احتياطية', 'panelAct(exportBackup)', 'bg-slate-600')])]
       ];
-      t.innerHTML = tiles.map(x => '<button type="button" onclick="' + x[2] + '" class="' + x[3] + ' text-white rounded-2xl p-4 flex flex-col items-center gap-2 text-xs font-black cursor-pointer shadow"><i class="fa-solid ' + x[0] + ' text-xl text-gold-300"></i><span>' + x[1] + '</span></button>').join('');
-      const st = document.getElementById('panelSectionTiles');
-      if (st) st.innerHTML = ['lands', 'apartments', 'compounds', 'houses', 'malls', 'factories'].map(k => '<button type="button" onclick="panelGo(\'' + k + '\')" class="bg-white border border-slate-300 rounded-xl p-2 text-[11px] font-black text-navy-900 cursor-pointer' + (hiddenSections[k] ? ' opacity-50' : '') + '">' + getCategoryLabel(k) + (hiddenSections[k] ? ' (مخفي)' : '') + '</button>').join('');
+      const html = groups.map(g => { const o = !!window.__acc[g[0]]; return '<div class="rounded-2xl border border-slate-300 bg-white overflow-hidden"><button type="button" aria-expanded="' + o + '" onclick="panelAccToggle(\'' + g[0] + '\', this)" class="w-full flex items-center justify-between gap-2 bg-navy-900 text-white px-4 py-3 text-sm font-black cursor-pointer"><span>' + g[1] + (g[2] ? '<span class="text-amber-300 text-xs">' + g[2] + '</span>' : '') + '</span><span class="acc-ch text-gold-400">' + (o ? '▴' : '▾') + '</span></button><div class="acc-body' + (o ? ' open' : '') + '"><div class="p-3">' + g[3] + '</div></div></div>'; }).join('');
+      if (window.__panelSig !== html) { window.__panelSig = html; box.innerHTML = html; }
+      try { panelPushState(); } catch (_) {}
     }
     setInterval(() => { if (document.documentElement.classList.contains('panel-home')) panelRender(); }, 5000);
     setInterval(() => { if (window.adminCountOpen) window.adminCountOpen(); }, 45000);
@@ -5718,26 +5731,50 @@ window.addEventListener('DOMContentLoaded', function(){
     }
 </script>
 <script>
-function toggleStatsStrip(){var h=document.documentElement;h.classList.toggle('stats-open');var b=document.getElementById('statsToggleBtn');if(b)b.textContent=h.classList.contains('stats-open')?'📊 إحصائيات التطبيق ▴':'📊 إحصائيات التطبيق ▾';}
 (function(){var VK='BEY70mHVMBWLbmpu1bdUVtI57q5ijVSbDAer2ShhBlhcgkbhn_7VouJ7NZ-qn5zo-ZhGUU5M8U2nS1czyTazObY';
 function u8(b){var p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(Array.from(r).map(function(c){return c.charCodeAt(0)}));}
+function tmo(p,ms,name){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error(name+' timeout'))},ms)})]);}
+async function getReg(){var r=await navigator.serviceWorker.getRegistration();if(!r)r=await tmo(navigator.serviceWorker.register('sw.js'),8000,'sw-register');return await tmo(navigator.serviceWorker.ready,8000,'sw-ready');}
 async function reg(sub){var tok=await window.cloudGetToken();if(!tok)throw new Error('login');var j=sub.toJSON();
-var r=await fetch(SUPABASE_URL+'/rest/v1/rpc/register_admin_push',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth})});if(!r.ok)throw new Error('reg '+r.status);}
+var r=await fetch(SUPABASE_URL+'/rest/v1/rpc/register_admin_push',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth})});if(!r.ok)throw new Error('server-register '+r.status);}
+var HELP='الإشعارات مقفولة على موبايلك.\n\nلتشغيلها:\n1) اضغط مطولًا على أيقونة التطبيق ← معلومات التطبيق ← الإشعارات ← شغّلها.\n2) أو من كروم: ⋮ ← الإعدادات ← إعدادات الموقع ← الإشعارات ← اسمح لـ sohag-properties.github.io\n\nبعدين ارجع هنا واضغط "تشغيل الإشعارات" تاني.';
+window.adminPushHelp=function(){alert(HELP);};
 window.adminPushSetup=async function(){
+ window.__pushErr='';
  try{
-  if(!('serviceWorker' in navigator)||!('PushManager' in window)){alert('الموبايل/المتصفح ده مش بيدعم الإشعارات. افتح التطبيق من كروم أو ثبّته على الشاشة الرئيسية.');return;}
-  if(Notification.permission==='denied'){alert('الإشعارات مقفولة على موبايلك.\n\nلتشغيلها: اضغط مطولًا على أيقونة التطبيق ← معلومات التطبيق ← الإشعارات ← شغّلها. (أو من كروم: ⋮ ← الإعدادات ← إعدادات الموقع ← الإشعارات ← اسمح لـ sohag-properties.github.io). بعدين ارجع واضغط الزر ده تاني.');return;}
-  var p=await Notification.requestPermission();if(p!=='granted'){alert('لازم تسمح بالإشعارات علشان توصلك. اضغط الزر تاني واختار "السماح".');return;}
-  var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();
-  if(!sub)sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VK)});
-  await reg(sub);localStorage.setItem('mgr_push_on','1');try{panelRender()}catch(_){}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||typeof Notification==='undefined'){window.__pushErr='unsupported';alert('المتصفح ده مش بيدعم الإشعارات. افتح التطبيق من كروم على أندرويد.');return panelPushState();}
+  if(Notification.permission==='denied'){alert(HELP);return panelPushState();}
+  var perm=await Notification.requestPermission();
+  if(perm!=='granted'){window.__pushErr='permission-'+perm;alert('لازم تختار "السماح" علشان توصلك الإشعارات. اضغط "تشغيل الإشعارات" تاني.');return panelPushState();}
+  var r=await getReg();
+  try{await r.showNotification('✅ سوهاج الجديدة',{body:'إشعار تجربة من الموبايل — لو شفته يبقى الإشعارات مفتوحة',icon:'./icon-192.png',tag:'admin-local-test'});}catch(e){window.__pushErr='local-notification: '+(e.message||e);}
+  var sub=await r.pushManager.getSubscription();
+  if(!sub){try{sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VK)});}catch(e){window.__pushErr='subscribe: '+(e.message||e);throw e;}}
+  await reg(sub);localStorage.setItem('mgr_push_on','1');
   var tok=await window.cloudGetToken();
   var t=await fetch(SUPABASE_URL+'/functions/v1/admin-notify',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({kind:'test'})});
   var o=await t.json().catch(function(){return{}});
   showToast(o&&o.sent>0?'✅ الإشعارات اتفعلت — وصلك إشعار تجربة':'تم التفعيل — لو ما وصلش إشعار التجربة راجع إعدادات إشعارات التطبيق');
- }catch(e){showToast(String(e.message||e).indexOf('login')>=0?'سجل دخول السحابة الأول':'حصل خطأ في تفعيل الإشعارات — حاول تاني');}
+ }catch(e){if(!window.__pushErr)window.__pushErr=String(e.message||e);var m=String(e.message||e);showToast(m.indexOf('login')>=0?'سجل دخول السحابة الأول':'تعذر تفعيل الإشعارات: '+m.slice(0,60));}
+ panelPushState();
 };
-window.addEventListener('load',function(){setTimeout(async function(){try{if(localStorage.getItem('mgr_push_on')==='1'&&Notification.permission==='granted'&&sessionStorage.getItem('mgr_unlocked')==='1'){var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();if(sub)await reg(sub);}}catch(e){}},4000);});
+window.adminPushTest=async function(){try{var tok=await window.cloudGetToken();var t=await fetch(SUPABASE_URL+'/functions/v1/admin-notify',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({kind:'test'})});var o=await t.json();showToast(o.sent>0?'اتبعت إشعار تجربة لموبايلك':'السيرفر مالقاش جهازك — اضغط تشغيل الإشعارات تاني');}catch(e){showToast('تعذر إرسال التجربة');}};
+window.panelPushState=async function(){
+ var el=document.getElementById('panelPushBar');if(!el)return;
+ var st,txt,btn='';
+ if(!('serviceWorker' in navigator)||!('PushManager' in window)||typeof Notification==='undefined'){txt='🔕 الإشعارات: مش مدعومة على المتصفح ده (افتح من كروم أندرويد)';}
+ else if(Notification.permission==='denied'){txt='🔕 الإشعارات: مقفولة من إعدادات الموبايل';btn='<button type="button" onclick="adminPushHelp()" class="bg-red-600 text-white px-4 py-2 rounded-xl cursor-pointer">إزاي أفتحها؟</button>';}
+ else{
+  var sub=null;try{var r=await navigator.serviceWorker.getRegistration();if(r)sub=await r.pushManager.getSubscription();}catch(_){}
+  var on=Notification.permission==='granted'&&sub&&localStorage.getItem('mgr_push_on')==='1';
+  if(on){txt='🔔 الإشعارات: شغالة ✓ (طلب جديد • محادثة • عقار وارد)';btn='<button type="button" onclick="adminPushTest()" class="bg-navy-700 text-gold-300 px-3 py-2 rounded-xl cursor-pointer">جرّب إشعار</button>';}
+  else if(Notification.permission==='granted'){txt='🔕 الإشعارات: مسموحة بس الجهاز لسه ما اتسجلش';btn='<button type="button" onclick="adminPushSetup()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer">تشغيل الإشعارات</button>';}
+  else{txt='🔕 الإشعارات: لسه ما اتفعلتش';btn='<button type="button" onclick="adminPushSetup()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl cursor-pointer">🔔 تشغيل الإشعارات</button>';}
+ }
+ var h='<div class="flex items-center justify-between gap-2 flex-wrap"><span>'+txt+'</span>'+btn+'</div>'+(window.__pushErr?'<div class="mt-2 text-red-300 break-all">السبب: '+String(window.__pushErr).replace(/</g,'&lt;')+'</div>':'');
+ if(el.__h!==h){el.__h=h;el.innerHTML=h;}
+};
+window.addEventListener('load',function(){setTimeout(async function(){try{if(localStorage.getItem('mgr_push_on')==='1'&&Notification.permission==='granted'&&sessionStorage.getItem('mgr_unlocked')==='1'){var r=await navigator.serviceWorker.getRegistration();var sub=r&&await r.pushManager.getSubscription();if(sub)await reg(sub);}}catch(e){}panelPushState();},3000);});
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='admin-go'&&typeof panelGo==='function'&&d.go){try{panelGo(d.go)}catch(_){}}});
 })();
 </script>
