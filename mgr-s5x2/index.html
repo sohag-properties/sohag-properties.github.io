@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><script>(function(){try{if(sessionStorage.getItem('mgr_unlocked')!=='1'){localStorage.removeItem('abuelhamd_cloud_auth');document.documentElement.classList.add('mgr-locked');}}catch(e){document.documentElement.classList.add('mgr-locked');}})();</script><style>html.mgr-locked body>*:not(#lockScreen):not(#cloudLoginModal){display:none!important}html.mgr-locked #cloudLoginModal{z-index:2147483000!important}#lockScreen{display:none}html.mgr-locked #lockScreen{position:fixed;inset:0;z-index:2147482000;background:#0a1428;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#94a3b8;font:700 14px sans-serif;direction:rtl}html.mgr-locked #lockScreen img{width:88px;height:88px;border-radius:22px;opacity:.9}</style><style>html:not(.adm-on) .admin-only-btn,html:not(.adm-on) #viewModeToggleBtn{display:none!important}</style>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><script>(function(){try{var __n=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||{};if(sessionStorage.getItem('mgr_just_login')==='1'){sessionStorage.removeItem('mgr_just_login');}else if(__n.type==='reload'||__n.type==='back_forward'){sessionStorage.removeItem('mgr_unlocked');sessionStorage.removeItem('abuelhamd_cloud_auth');}if(sessionStorage.getItem('mgr_unlocked')!=='1'){localStorage.removeItem('abuelhamd_cloud_auth');document.documentElement.classList.add('mgr-locked');}}catch(e){document.documentElement.classList.add('mgr-locked');}})();</script><style>html.mgr-locked body>*:not(#lockScreen):not(#cloudLoginModal){display:none!important}html.mgr-locked #cloudLoginModal{z-index:2147483000!important}#lockScreen{display:none}html.mgr-locked #lockScreen{position:fixed;inset:0;z-index:2147482000;background:#0a1428;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#94a3b8;font:700 14px sans-serif;direction:rtl}html.mgr-locked #lockScreen img{width:88px;height:88px;border-radius:22px;opacity:.9}</style><style>html:not(.adm-on) .admin-only-btn,html:not(.adm-on) #viewModeToggleBtn{display:none!important}</style>
   <meta name="theme-color" content="#0f766e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="./icon-192.png">
@@ -2790,8 +2790,8 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
     const CLOUD_ADMIN_EMAIL = 'admin@sohag-new.app';
     const CLOUD_STRICT = true; // الكتابة والقراءة الكاملة بتسجيل دخول الإدارة فقط
     let cloudTok = null;
-    function cloudAuthGet() { try { return JSON.parse(localStorage.getItem('abuelhamd_cloud_auth') || 'null'); } catch (_) { return null; } }
-    function cloudAuthSet(a) { try { if (a) localStorage.setItem('abuelhamd_cloud_auth', JSON.stringify(a)); else localStorage.removeItem('abuelhamd_cloud_auth'); } catch (_) {} }
+    function cloudAuthGet() { try { return JSON.parse(sessionStorage.getItem('abuelhamd_cloud_auth') || 'null'); } catch (_) { return null; } }
+    function cloudAuthSet(a) { try { localStorage.removeItem('abuelhamd_cloud_auth'); if (a) sessionStorage.setItem('abuelhamd_cloud_auth', JSON.stringify(a)); else sessionStorage.removeItem('abuelhamd_cloud_auth'); } catch (_) {} }
     function cloudHasSession() { const a = cloudAuthGet(); return !!(a && a.refresh_token); }
     async function cloudAuthCall(grant, body) {
       const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=' + grant, { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -2845,7 +2845,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       try {
         await cloudAuthCall('password', { email: CLOUD_ADMIN_EMAIL, password: pw });
         try { sessionStorage.setItem('mgr_unlocked', '1'); } catch (_) {}
-        if (document.documentElement.classList.contains('mgr-locked')) { location.reload(); return; }
+        if (document.documentElement.classList.contains('mgr-locked')) { try { sessionStorage.setItem('mgr_just_login', '1'); } catch (_) {} location.reload(); return; }
         closeCloudLogin();
         await cloudPullAll();
         await cloudFlushAll();
@@ -5814,7 +5814,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['stats', '📈 إحصائيات التطبيق', '', '<div class="flex flex-wrap gap-2 text-xs font-bold text-white bg-navy-900 rounded-xl p-3">' + statsHtml + '</div>'],
         ['props', '🏠 العقارات', '', grid([tile('fa-plus', 'إضافة عقار', 'panelAct(openPropertyModal)', 'bg-emerald-600'), tile('fa-list', 'كل العقارات', "panelGo('latest')", 'bg-navy-800')])],
         ['inbox', '📩 الطلبات والمحادثات', (pend !== '0' || (ac && ac.openRequests)) ? ' (' + pend + ' واردة • ' + (ac ? ac.openRequests : '...') + ' طلب)' : '', grid([tile('fa-inbox', 'عقارات واردة من العملاء (' + pend + ')', "panelGo('pending')", 'bg-amber-600'), tile('fa-comments', 'طلبات ومحادثات العملاء' + (ac ? ' (' + ac.openRequests + ' طلب • ' + ac.waitingChats + ' منتظر)' : ''), "panelGo('chats')", 'bg-teal-700')])],
-        ['content', '🗂️ الأقسام والمحتوى', '', grid([tile('fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', 'panelAct(openSectionsManager)', 'bg-purple-700'), tile('fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'), tile('fa-shop', 'المولات', 'panelAct(openMallsManager)', 'bg-navy-700')])],
+        ['content', '🗂️ الأقسام والمحتوى', '', grid([tile('fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', 'panelAct(openSectionsManager)', 'bg-purple-700'), tile('fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'), tile('fa-shop', 'المولات', 'panelAct(openMallsManager)', 'bg-navy-700'), tile('fa-lock', 'القفل التلقائي', 'panelAct(mgrLockSettings)', 'bg-red-700')])],
         ['cat', '📋 عقارات كل قسم', '', '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">' + cats + '</div>'],
         ['rescue', '🛟 استرجاع من الجهاز', '', grid([tile('fa-life-ring', 'فحص واسترجاع عناصر ضايعة', 'mgrRescueOpen()', 'bg-rose-700')])],
         ['admin', '⚙️ الإدارة والإعدادات', '', grid([tile('fa-user-shield', 'المشرفون', 'panelAct(openAdminsManager)', 'bg-amber-700'), tile('fa-cloud', 'السحابة', 'panelAct(showCloudLogin)', 'bg-sky-800'), tile('fa-bullhorn', 'رسالة عاجلة', 'panelAct(openUrgentModal)', 'bg-red-700'), tile('fa-key', 'تغيير كلمة السر', 'panelAct(openPwdChange)', 'bg-slate-700'), tile('fa-download', 'نسخة احتياطية', 'panelAct(exportBackup)', 'bg-slate-600')])]
@@ -6116,6 +6116,73 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
   var _om = (typeof openSectionsManager==='function')?openSectionsManager:null; if(!_om) { try{ applySections(); }catch(e){} return; }
   openSectionsManager = function(){ _om.apply(this,arguments); try{ var m=document.querySelector('#sectionsManagerModal > div'); if(m){ m.classList.remove('max-w-md'); m.classList.add('max-w-xl'); } render(); }catch(e){console.warn(e);} };
   try{ applySections(); }catch(e){ console.warn('sec2 init',e); }
+})();
+
+</script>
+<script>
+/* mgr-lock-v1: laptop-grade protection for the admin panel */
+(function(){
+  if (window.__mgrLock) return; window.__mgrLock = true;
+  var ss=sessionStorage;
+  function clearAuth(){ try{ ss.removeItem('mgr_unlocked'); ss.removeItem('mgr_last_pend'); ss.removeItem('mgr_last_ac'); ss.removeItem('abuelhamd_cloud_auth'); localStorage.removeItem('abuelhamd_cloud_auth'); }catch(_){} }
+  // 1) refresh / close / leave page => locked (the one-shot flag only lets the login's own reload through)
+  window.addEventListener('pagehide', function(e){ if (e.persisted) return; try{ if (ss.getItem('mgr_just_login')==='1') return; }catch(_){} clearAuth(); });
+  window.addEventListener('pageshow', function(e){ if (e.persisted && ss.getItem('mgr_unlocked')!=='1') location.replace(location.pathname); });
+  // 2) settings (minutes). Defaults: idle 5, hidden-tab 2. Changing them needs an unlocked panel.
+  function num(k,d,lo,hi){ var v=parseFloat(localStorage.getItem(k)); if(!(v>=lo&&v<=hi)) v=d; return v; }
+  function idleMin(){ return num('mgr_idle_min',5,1,120); }
+  function hideMin(){ return num('mgr_hide_min',2,0.5,120); }
+  var last=Date.now(), hiddenAt=0, warned=false;
+  function bump(){ last=Date.now(); if(warned){ warned=false; var w=document.getElementById('mgrIdleWarn'); if(w) w.remove(); } }
+  ['pointerdown','keydown','touchstart','wheel','scroll'].forEach(function(ev){ window.addEventListener(ev,bump,{passive:true,capture:true}); });
+  var mt=0; window.addEventListener('mousemove',function(){ var n=Date.now(); if(n-mt>3000){ mt=n; bump(); } },{passive:true});
+  function adminOn(){ try{ return isAdminMode===true; }catch(_){ return false; } }
+  function lockNow(why){ if(!adminOn()) return; try{ showToast('اتقفلت لوحة الإدارة: '+why); }catch(_){} try{ mgrLockExit(); }catch(e){ clearAuth(); location.replace(location.pathname); } }
+  function check(){
+    if(!adminOn()) return;
+    var idle=Date.now()-last, lim=idleMin()*60000;
+    if(idle>=lim){ lockNow('مفيش نشاط '+idleMin()+' دقيقة'); return; }
+    if(lim-idle<=15000 && !warned){ warned=true; var d=document.createElement('div'); d.id='mgrIdleWarn'; d.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:2147483200;background:#b91c1c;color:#fff;font:900 13px sans-serif;padding:10px 16px;border-radius:14px;direction:rtl'; d.textContent='اللوحة هتتقفل بعد ثواني — المس الشاشة للبقاء'; document.body.appendChild(d); }
+  }
+  setInterval(check,5000);
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){ hiddenAt=Date.now(); return; }
+    if(adminOn() && hiddenAt && Date.now()-hiddenAt>=hideMin()*60000){ lockNow('الصفحة كانت مخفية'); return; }
+    hiddenAt=0; check();
+  });
+  // 3) re-enter the password before critical actions (grace 90s after a successful check)
+  var okAt=0;
+  function norm(p){ return String(p||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x660)}).replace(/[\u06F0-\u06F9]/g,function(d){return String(d.charCodeAt(0)-0x6F0)}).replace(/[\u200e\u200f\u202a-\u202e\s]/g,''); }
+  function reauth(what){
+    return new Promise(function(res){
+      if(Date.now()-okAt<90000) return res(true);
+      var m=document.createElement('div'); m.style.cssText='position:fixed;inset:0;z-index:2147483300;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;font-family:inherit';
+      m.innerHTML='<div style="background:#fff;border-radius:18px;max-width:340px;width:100%;padding:18px;text-align:center"><div style="font:900 15px sans-serif;color:#0f172a;margin-bottom:6px">تأكيد بكلمة السر</div><div style="font:700 12px sans-serif;color:#475569;margin-bottom:10px" id="mgrRaWhat"></div><input id="mgrRaPw" type="password" autocomplete="current-password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;margin-bottom:8px" placeholder="كلمة سر السحابة"><div id="mgrRaErr" style="color:#b91c1c;font:700 12px sans-serif;min-height:16px"></div><div style="display:flex;gap:8px;margin-top:6px"><button id="mgrRaOk" style="flex:1;background:#0f766e;color:#fff;font:900 13px sans-serif;border:0;border-radius:10px;padding:10px;cursor:pointer">تأكيد</button><button id="mgrRaNo" style="flex:1;background:#e2e8f0;color:#0f172a;font:900 13px sans-serif;border:0;border-radius:10px;padding:10px;cursor:pointer">إلغاء</button></div></div>';
+      document.body.appendChild(m); m.querySelector('#mgrRaWhat').textContent=what||''; var inp=m.querySelector('#mgrRaPw'); inp.focus();
+      function done(v){ m.remove(); res(v); }
+      m.querySelector('#mgrRaNo').onclick=function(){ done(false); };
+      async function go(){ var pw=norm(inp.value); if(!pw) return; m.querySelector('#mgrRaOk').disabled=true;
+        try{ await cloudAuthCall('password',{email:CLOUD_ADMIN_EMAIL,password:pw}); okAt=Date.now(); done(true); }
+        catch(e){ m.querySelector('#mgrRaErr').textContent='كلمة السر غلط'; m.querySelector('#mgrRaOk').disabled=false; inp.select(); } }
+      m.querySelector('#mgrRaOk').onclick=go; inp.addEventListener('keydown',function(e){ if(e.key==='Enter') go(); });
+    });
+  }
+  window.mgrReauth=reauth;
+  function guard(name,label){ var f=window[name]; if(typeof f!=='function') return; window[name]=function(){ var a=arguments, self=this; return reauth(label).then(function(ok){ if(ok) return f.apply(self,a); try{ showToast('اتلغى — محتاج كلمة السر'); }catch(_){} }); }; }
+  guard('deleteProperty','حذف إعلان نهائيًا');
+  guard('togglePropertyHidden','إخفاء/إظهار إعلان');
+  guard('approvePending','موافقة ونشر طلب على الموقع');
+  guard('unholdPending','فك التعليق عن طلب');
+  guard('rejectPending','حذف/رفض طلب');
+  try{ if(window.__sec2){ var s=window.__sec2; ['del','delG','restore'].forEach(function(n){ var f=s[n]; s[n]=function(){ var a=arguments; return reauth('تعديل/حذف قسم').then(function(ok){ if(ok) f.apply(s,a); }); }; }); } }catch(_){}
+  // settings dialog
+  window.mgrLockSettings=function(){ if(!adminOn()) return;
+    var i=prompt('القفل التلقائي بعد كام دقيقة من عدم النشاط؟ (1 إلى 120)', String(idleMin())); if(i===null) return;
+    var h=prompt('القفل بعد كام دقيقة لو الصفحة اتخفت (تبويب تاني/شاشة مقفولة)؟ (0.5 إلى 120)', String(hideMin())); if(h===null) return;
+    var a=parseFloat(i), b=parseFloat(h);
+    if(!(a>=1&&a<=120)||!(b>=0.5&&b<=120)){ alert('قيمة غير صحيحة'); return; }
+    localStorage.setItem('mgr_idle_min',String(a)); localStorage.setItem('mgr_hide_min',String(b)); showToast('اتحفظ: قفل بعد '+a+' د خمول و '+b+' د إخفاء'); };
+  window.__mgrLockTest={check:check,idleMin:idleMin,hideMin:hideMin,setLast:function(t){last=t;},lockNow:lockNow};
 })();
 
 </script>
