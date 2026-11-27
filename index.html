@@ -876,7 +876,28 @@
                 </select>
               </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">نوع البيع</label>
+                <select id="adminAptSaleType" onchange="recalcAdminAptInstallments()" class="w-full px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+                  <option value="new">نظام جديد (من الشركة)</option>
+                  <option value="resale">ريسيل (إعادة بيع)</option>
+                </select>
+              </div>
+              <div data-apt-resale="admin" class="hidden">
+                <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المدفوعة حتى الآن</label>
+                <input type="number" min="0" id="adminAptPaidCount" oninput="recalcAdminAptInstallments()" placeholder="مثال: 4" class="w-full px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+              <div data-apt-resale="admin" class="hidden">
+                <label class="block text-[11px] font-black text-red-700 mb-1">الأوفر (للإدارة فقط — لا يظهر للجمهور)</label>
+                <input type="number" min="0" id="adminAptOver" placeholder="ربح البائع (ج.م)" class="w-full px-2.5 py-2 bg-red-50 border border-red-300 rounded-xl text-xs font-bold">
+              </div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <div data-apt-resale="admin" class="hidden bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center justify-between">
+                <span class="text-amber-900">المدفوع حتى الآن:</span>
+                <span id="adminAptPaidDisplay" class="font-black text-amber-950">0 ج.م</span>
+              </div>
               <div class="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center justify-between">
                 <span class="text-slate-600">المبلغ المتبقي:</span>
                 <span id="adminAptRemainingDisplay" class="font-black text-navy-900">0 ج.م</span>
@@ -956,19 +977,30 @@
                 <option value="كاش">كاش بالكامل</option>
               </select>
             </div>
+            <div>
+              <label class="block text-[11px] font-black text-slate-700 mb-1">نوع البيع</label>
+              <select id="adminCompSaleType" onchange="compSyncInst('admin')" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                <option value="new">نظام جديد (من الشركة)</option>
+                <option value="resale">ريسيل (إعادة بيع)</option>
+              </select>
+            </div>
           </div>
           <div id="adminCompInstGroup" class=" bg-white/70 border border-indigo-200 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">المدفوع حتى الآن (ج.م)</label>
-              <input type="number" id="adminCompPaid" oninput="compSyncInst('admin')" placeholder="مثال: 600000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">المقدم (ج.م)</label>
+              <input type="number" id="adminCompDownPayment" oninput="compSyncInst('admin')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد (ج.م)</label>
-              <input type="number" id="adminCompInstValue" oninput="compSyncInst('admin')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">مدة التقسيط (سنوات)</label>
+              <input type="number" step="0.5" min="0.5" max="15" id="adminCompYears" oninput="compSyncInst('admin')" placeholder="مثال: 4" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المتبقية</label>
-              <input type="number" id="adminCompInstCount" oninput="compSyncInst('admin')" placeholder="مثال: 27" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            <div data-comp-resale="admin" class="hidden">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المدفوعة حتى الآن</label>
+              <input type="number" min="0" id="adminCompPaidCount" oninput="compSyncInst('admin')" placeholder="مثال: 4" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            </div>
+            <div data-comp-resale="admin" class="hidden">
+              <label class="block text-[11px] font-black text-red-700 mb-1">الأوفر (للإدارة فقط — لا يظهر للجمهور)</label>
+              <input type="number" min="0" id="adminCompOver" placeholder="ربح البائع (ج.م)" class="w-full px-2.5 py-2 bg-red-50 border border-red-300 rounded-xl text-xs font-bold">
             </div>
             <div id="adminCompTotalNote" class="sm:col-span-3 text-[11px] font-black text-indigo-900"></div>
           </div>
@@ -1329,7 +1361,21 @@
                 </select>
               </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">نوع البيع</label>
+                <select id="clientAptSaleType" onchange="recalcClientAptInstallments()" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+                  <option value="new">نظام جديد (من الشركة)</option>
+                  <option value="resale">ريسيل (إعادة بيع)</option>
+                </select>
+              </div>
+              <div data-apt-resale="client" class="hidden">
+                <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المدفوعة حتى الآن</label>
+                <input type="number" min="0" id="clientAptPaidCount" oninput="recalcClientAptInstallments()" placeholder="مثال: 4" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+              </div>
+            </div>
             <div class="grid grid-cols-2 gap-2 text-[11px] font-black">
+              <div data-apt-resale="client" class="hidden bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg text-amber-950">المدفوع حتى الآن: <span id="clientAptPaidDisplay">0 ج.م</span></div>
               <div class="bg-sky-50 border border-sky-200 px-2.5 py-1.5 rounded-lg text-sky-950">عدد الأقساط المتبقية: <span id="clientAptCountDisplay">0 قسط</span></div>
               <div class="bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-emerald-900">قيمة كل قسط: <span id="clientAptSingleValDisplay">0 ج.م</span></div>
             </div>
@@ -1405,18 +1451,25 @@
               <option value="كاش">كاش</option>
             </select>
           </div>
+          <div>
+            <label class="block text-[11px] font-black text-slate-700 mb-1">نوع البيع</label>
+            <select id="clientCompSaleType" onchange="compSyncInst('client')" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <option value="new">نظام جديد (من الشركة)</option>
+              <option value="resale">ريسيل (إعادة بيع)</option>
+            </select>
+          </div>
           <div id="clientCompInstGroup" class="col-span-full bg-white/70 border border-indigo-200 rounded-xl p-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">المدفوع حتى الآن (ج.م)</label>
-              <input type="number" id="clientCompPaid" oninput="compSyncInst('client')" placeholder="مثال: 600000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">المقدم (ج.م)</label>
+              <input type="number" id="clientCompDownPayment" oninput="compSyncInst('client')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
             <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">قيمة القسط الواحد (ج.م)</label>
-              <input type="number" id="clientCompInstValue" oninput="compSyncInst('client')" placeholder="مثال: 100000" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">مدة التقسيط (سنوات)</label>
+              <input type="number" step="0.5" min="0.5" max="15" id="clientCompYears" oninput="compSyncInst('client')" placeholder="مثال: 4" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
-            <div>
-              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المتبقية</label>
-              <input type="number" id="clientCompInstCount" oninput="compSyncInst('client')" placeholder="مثال: 27" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+            <div data-comp-resale="client" class="hidden">
+              <label class="block text-[11px] font-black text-slate-700 mb-1">عدد الأقساط المدفوعة حتى الآن</label>
+              <input type="number" min="0" id="clientCompPaidCount" oninput="compSyncInst('client')" placeholder="مثال: 4" class="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold">
             </div>
             <div id="clientCompTotalNote" class="sm:col-span-3 text-[11px] font-black text-indigo-900"></div>
           </div>
@@ -2067,11 +2120,27 @@
     }
 
     function compInstFields(p) {
-      const n = id => parseFloat(document.getElementById(p + id).value) || 0;
+      const n = id => parseFloat(document.getElementById(p + id)?.value) || 0;
       const freq = document.getElementById(p + 'CompFreq').value;
       if (freq === 'كاش') return { remInstallments: 0, duration: '' };
-      const paid = n('CompPaid'), val = n('CompInstValue'), cnt = n('CompInstCount');
-      return { paid, instValue: val, instCount: cnt, remInstallments: val * cnt, duration: cnt ? (cnt + ' قسط') : '' };
+      const priceEl = document.getElementById(p === 'admin' ? 'propTotalPrice' : 'clientTotalPrice');
+      const total = parseFloat(priceEl?.value) || 0;
+      const saleType = document.getElementById(p + 'CompSaleType')?.value || 'new';
+      const downPayment = n('CompDownPayment'), years = n('CompYears');
+      const paidCount = saleType === 'resale' ? n('CompPaidCount') : 0;
+      const rs = computeResaleSchedule(total, downPayment, years, freq, paidCount);
+      return {
+        saleType,
+        downPayment,
+        years,
+        instValue: rs.singleVal,
+        instCount: rs.count,
+        paidCount: rs.paidN,
+        paidAmount: rs.paidAmount,
+        remainingAmount: rs.remainingAmount,
+        remainingCount: rs.remainingCount,
+        remainingYears: rs.remainingYears
+      };
     }
     function compSyncInst(p) {
       const catEl = document.getElementById(p === 'admin' ? 'propCategory' : 'clientCategory');
@@ -2079,18 +2148,28 @@
       const g = document.getElementById(p + 'CompInstGroup');
       const note = document.getElementById(p + 'CompTotalNote');
       if (!catEl || !priceEl || !g) return;
-      const inst = catEl.value === 'compounds' && document.getElementById(p + 'CompFreq').value !== 'كاش';
+      const freq = document.getElementById(p + 'CompFreq').value;
+      const inst = catEl.value === 'compounds' && freq !== 'كاش';
       g.classList.toggle('hidden', !inst);
-      const n = id => parseFloat(document.getElementById(p + id).value) || 0;
-      const paid = n('CompPaid'), val = n('CompInstValue'), cnt = n('CompInstCount');
-      if (inst && (paid || val || cnt)) {
-        const total = paid + val * cnt;
-        priceEl.value = total; priceEl.readOnly = true; priceEl.classList.add('bg-slate-200');
-        if (note) note.textContent = 'إجمالي سعر الوحدة = المدفوع + (القسط × عدد الأقساط) = ' + total.toLocaleString('ar-EG') + ' ج.م';
-        try { if (p === 'admin') recalcAdminFinancials(); } catch (_) {}
-      } else {
-        priceEl.readOnly = false; priceEl.classList.remove('bg-slate-200');
-        if (note) note.textContent = '';
+      priceEl.readOnly = false; priceEl.classList.remove('bg-slate-200');
+      if (!inst) { if (note) note.textContent = ''; return; }
+      const saleType = document.getElementById(p + 'CompSaleType')?.value || 'new';
+      document.querySelectorAll('[data-comp-resale="' + p + '"]').forEach(el => el.classList.toggle('hidden', saleType !== 'resale'));
+      const n = id => parseFloat(document.getElementById(p + id)?.value) || 0;
+      const total = parseFloat(priceEl.value) || 0;
+      const downPayment = n('CompDownPayment'), years = n('CompYears');
+      const paidCount = saleType === 'resale' ? n('CompPaidCount') : 0;
+      const rs = computeResaleSchedule(total, downPayment, years, freq, paidCount);
+      const fmt = v => Math.round(v).toLocaleString('ar-EG');
+      if (note) {
+        if (total > 0 && years > 0) {
+          note.textContent = 'القسط: ' + fmt(rs.singleVal) + ' ج.م × ' + rs.count + ' قسط (' + freq + ')' +
+            (saleType === 'resale'
+              ? ' • المدفوع حتى الآن: ' + fmt(rs.paidAmount) + ' ج.م • المتبقي: ' + fmt(rs.remainingAmount) + ' ج.م (' + rs.remainingCount + ' قسط / حوالي ' + rs.remainingYears + ' سنة)'
+              : ' • المتبقي بعد المقدم: ' + fmt(rs.remainingAmount) + ' ج.م');
+        } else {
+          note.textContent = 'أدخل السعر الإجمالي والمقدم والمدة ليُحسب القسط تلقائيًا';
+        }
       }
     }
 
@@ -3011,7 +3090,10 @@
           ${ap.payMode === 'installments' ? `
             <div>المقدم: <span class="font-black">${Number(ap.downPayment || 0).toLocaleString('ar-EG')} ج.م</span> • نظام التقسيط: <span class="font-black">${ap.freq}</span> لمدة <span class="font-black">${ap.years} سنوات</span> (${ap.installmentsCount} قسط)</div>
             <div class="text-navy-900 font-black">قيمة كل قسط: ${Number(ap.singleInstallmentVal || 0).toLocaleString('ar-EG')} ج.م</div>
+            ${ap.saleType === 'resale' ? `
+            <div>المدفوع حتى الآن: <span class="font-black">${Number(ap.paidAmount || 0).toLocaleString('ar-EG')} ج.م</span> • المتبقي: <span class="font-black">${Number(ap.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</span> (${Number(ap.remainingInstallmentsCount || 0).toLocaleString('ar-EG')} قسط / حوالي ${ap.remainingYears} سنة) • <span class="font-black text-emerald-800">ريسيل</span></div>` : ''}
           ` : `<div class="text-emerald-800 font-black">نظام السداد: كاش بالكامل</div>`}
+          ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م • كاش المطلوب من المشتري: ${Number((ap.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م</div>` : ''}
         </div>`;
       }
       if (item.smallInvestorDetails && item.smallInvestorDetails.floor) {
@@ -3024,7 +3106,12 @@
         extraSpecsHTML += `<div class="bg-indigo-50 border border-indigo-200 text-indigo-950 p-2.5 rounded-xl text-[11px] font-bold space-y-1">
           <div>عمارة: <span class="font-black">${c.building || '-'}</span> • الدور: <span class="font-black">${c.floor || '-'}</span> • الاستلام: <span class="font-black text-indigo-700">${c.delivery || '-'}</span></div>
           <div>سعر المتر (من الإجمالي): <span class="font-black">${Number(c.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span> • النظام: <span class="font-black">${c.freq || '-'}</span></div>
-          ${c.instValue ? `<div>المدفوع: <span class="font-black">${Number(c.paid || 0).toLocaleString('ar-EG')} ج.م</span> • القسط: <span class="font-black">${Number(c.instValue).toLocaleString('ar-EG')} ج.م ${c.freq || ''}</span></div><div>الأقساط المتبقية: <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')} قسط</span> (${Number(c.remInstallments || 0).toLocaleString('ar-EG')} ج.م) • الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>` : c.remInstallments ? `<div>الأقساط المتبقية: <span class="font-black">${Number(c.remInstallments).toLocaleString('ar-EG')} ج.م</span> (${c.duration || ''})</div>` : ''}
+          ${c.saleType ? `
+            <div>قيمة القسط: <span class="font-black">${Number(c.instValue || 0).toLocaleString('ar-EG')} ج.م</span> (${c.freq || ''}) × <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')}</span> قسط • المقدم: <span class="font-black">${Number(c.downPayment || 0).toLocaleString('ar-EG')} ج.م</span></div>
+            ${c.saleType === 'resale' ? `<div>المدفوع حتى الآن: <span class="font-black">${Number(c.paidAmount || 0).toLocaleString('ar-EG')} ج.م</span> • المتبقي: <span class="font-black">${Number(c.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</span> (${Number(c.remainingCount || 0).toLocaleString('ar-EG')} قسط / حوالي ${c.remainingYears} سنة) • <span class="font-black text-indigo-700">ريسيل</span></div>` : ''}
+            <div>الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>
+            ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م • كاش المطلوب من المشتري: ${Number((c.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م</div>` : ''}
+          ` : (c.instValue ? `<div>المدفوع: <span class="font-black">${Number(c.paid || 0).toLocaleString('ar-EG')} ج.م</span> • القسط: <span class="font-black">${Number(c.instValue).toLocaleString('ar-EG')} ج.م ${c.freq || ''}</span></div><div>الأقساط المتبقية: <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')} قسط</span> (${Number(c.remInstallments || 0).toLocaleString('ar-EG')} ج.م) • الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>` : c.remInstallments ? `<div>الأقساط المتبقية: <span class="font-black">${Number(c.remInstallments).toLocaleString('ar-EG')} ج.م</span> (${c.duration || ''})</div>` : '')}
         </div>`;
       }
       if (item.mallDetails) {
@@ -3246,6 +3333,9 @@
             document.getElementById('adminAptDownPayment').value = ap.downPayment || '';
             document.getElementById('adminAptInstallmentYears').value = ap.years || '';
             document.getElementById('adminAptInstallmentFreq').value = ap.freq || 'ربع سنوي';
+            document.getElementById('adminAptSaleType').value = ap.saleType || 'new';
+            document.getElementById('adminAptPaidCount').value = ap.paidInstallments ?? '';
+            document.getElementById('adminAptOver').value = item.overPrice || '';
             recalcAdminAptInstallments();
           }
         }
@@ -3255,9 +3345,11 @@
           document.getElementById('adminCompDelivery').value = item.compoundDetails.delivery || 'فوري';
           document.getElementById('adminCompPricePerMeter').value = item.compoundDetails.pricePerMeter || '';
           document.getElementById('adminCompFreq').value = item.compoundDetails.freq || 'ربع سنوي';
-          document.getElementById('adminCompPaid').value = item.compoundDetails.paid || '';
-          document.getElementById('adminCompInstValue').value = item.compoundDetails.instValue || '';
-          document.getElementById('adminCompInstCount').value = item.compoundDetails.instCount || '';
+          document.getElementById('adminCompSaleType').value = item.compoundDetails.saleType || 'new';
+          document.getElementById('adminCompDownPayment').value = item.compoundDetails.downPayment || '';
+          document.getElementById('adminCompYears').value = item.compoundDetails.years || '';
+          document.getElementById('adminCompPaidCount').value = item.compoundDetails.paidCount ?? '';
+          document.getElementById('adminCompOver').value = item.overPrice || '';
           try { compSyncInst('admin'); } catch (_) {}
         }
         if (item.mallDetails) {
@@ -3495,6 +3587,20 @@
       return { ppm, remaining, count, singleVal };
     }
 
+    // النظام الجديد / الريسيل: احتساب القسط والمدفوع والمتبقي من الخطة الأصلية (القسط مقرّب لأقرب جنيه)
+    function computeResaleSchedule(total, downPayment, years, freq, paidCount) {
+      const perYear = freq === 'ربع سنوي' ? 4 : (freq === 'نصف سنوي' ? 2 : 1);
+      const count = years > 0 ? Math.max(1, Math.round(years * perYear)) : 0;
+      const financed = Math.max(0, (total || 0) - (downPayment || 0));
+      const singleVal = count > 0 ? Math.round(financed / count) : 0;
+      const paidN = Math.min(Math.max(0, Math.round(paidCount || 0)), count);
+      const paidAmount = (downPayment || 0) + paidN * singleVal;
+      const remainingCount = Math.max(0, count - paidN);
+      const remainingAmount = Math.max(0, (total || 0) - paidAmount);
+      const remainingYears = perYear > 0 ? Math.round((remainingCount / perYear) * 10) / 10 : 0;
+      return { perYear, count, singleVal, paidN, paidAmount, remainingCount, remainingAmount, remainingYears };
+    }
+
     function recalcAdminAptInstallments() {
       const area = parseFloat(document.getElementById('adminAptAreaInput')?.value) || 0;
       const ppmVal = parseFloat(document.getElementById('adminAptPricePerMeter')?.value) || 0;
@@ -3502,15 +3608,20 @@
       const downPayment = parseFloat(document.getElementById('adminAptDownPayment')?.value) || 0;
       const years = parseFloat(document.getElementById('adminAptInstallmentYears')?.value) || 0;
       const freq = document.getElementById('adminAptInstallmentFreq')?.value || 'ربع سنوي';
-
-      const sched = computeInstallmentsSchedule(total, area, ppmVal, downPayment, years, freq);
+      const saleType = document.getElementById('adminAptSaleType')?.value || 'new';
+      document.querySelectorAll('[data-apt-resale="admin"]').forEach(el => el.classList.toggle('hidden', saleType !== 'resale'));
+      const base = computeInstallmentsSchedule(total, area, ppmVal, downPayment, years, freq);
+      const paidCount = saleType === 'resale' ? (parseFloat(document.getElementById('adminAptPaidCount')?.value) || 0) : 0;
+      const rs = computeResaleSchedule(total, downPayment, years, freq, paidCount);
       const remEl = document.getElementById('adminAptRemainingDisplay');
       const cntEl = document.getElementById('adminAptCountDisplay');
       const valEl = document.getElementById('adminAptSingleValDisplay');
-      if (remEl) remEl.textContent = `${sched.remaining.toLocaleString('ar-EG')} ج.م`;
-      if (cntEl) cntEl.textContent = `${sched.count} قسط (${freq})`;
-      if (valEl) valEl.textContent = `${sched.singleVal.toLocaleString('ar-EG')} ج.م`;
-      return sched;
+      const paidEl = document.getElementById('adminAptPaidDisplay');
+      if (remEl) remEl.textContent = `${(saleType === 'resale' ? rs.remainingAmount : base.remaining).toLocaleString('ar-EG')} ج.م`;
+      if (cntEl) cntEl.textContent = saleType === 'resale' ? `${rs.remainingCount} من ${rs.count} قسط (${freq})` : `${rs.count} قسط (${freq})`;
+      if (valEl) valEl.textContent = `${rs.singleVal.toLocaleString('ar-EG')} ج.م`;
+      if (paidEl) paidEl.textContent = `${rs.paidAmount.toLocaleString('ar-EG')} ج.م`;
+      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
     }
 
     // ===== المحلات التجارية: المساحة × سعر المتر = الإجمالي، وكاش/تقسيط =====
@@ -3636,9 +3747,11 @@
               downPayment,
               years,
               freq,
-              remainingAmount: sched.remaining,
+              saleType: sched.saleType,
+              remainingAmount: sched.saleType === 'resale' ? sched.remainingAmount : sched.remaining,
               installmentsCount: sched.count,
-              singleInstallmentVal: sched.singleVal
+              singleInstallmentVal: sched.singleVal,
+              ...(sched.saleType === 'resale' ? { paidInstallments: sched.paidN, paidAmount: sched.paidAmount, remainingInstallmentsCount: sched.remainingCount, remainingYears: sched.remainingYears } : {})
             };
           } else {
             paymentStatus = `كاش بالكامل (${deliveryTime} — ${finishStatus})`;
@@ -3725,6 +3838,15 @@
             builtArea: parseFloat(document.getElementById('adminFactoryBuiltArea').value) || 0,
             height: parseFloat(document.getElementById('adminFactoryHeight').value) || 0
           };
+        }
+
+        if (cat === 'apartments' && apartmentPaymentDelivery && apartmentPaymentDelivery.saleType === 'resale') {
+          const ovA = parseFloat(document.getElementById('adminAptOver').value) || 0;
+          if (ovA > 0) propObj.overPrice = ovA;
+        }
+        if (cat === 'compounds' && propObj.compoundDetails && propObj.compoundDetails.saleType === 'resale') {
+          const ovC = parseFloat(document.getElementById('adminCompOver').value) || 0;
+          if (ovC > 0) propObj.overPrice = ovC;
         }
 
         if (blockIfBadListing(propObj, false)) return;
@@ -3983,13 +4105,18 @@
       const downPayment = parseFloat(document.getElementById('clientAptDownPayment')?.value) || 0;
       const years = parseFloat(document.getElementById('clientAptInstallmentYears')?.value) || 0;
       const freq = document.getElementById('clientAptInstallmentFreq')?.value || 'ربع سنوي';
-
-      const sched = computeInstallmentsSchedule(total, area, ppmVal, downPayment, years, freq);
+      const saleType = document.getElementById('clientAptSaleType')?.value || 'new';
+      document.querySelectorAll('[data-apt-resale="client"]').forEach(el => el.classList.toggle('hidden', saleType !== 'resale'));
+      const paidCount = saleType === 'resale' ? (parseFloat(document.getElementById('clientAptPaidCount')?.value) || 0) : 0;
+      const base = computeInstallmentsSchedule(total, area, ppmVal, downPayment, years, freq);
+      const rs = computeResaleSchedule(total, downPayment, years, freq, paidCount);
       const cntEl = document.getElementById('clientAptCountDisplay');
       const valEl = document.getElementById('clientAptSingleValDisplay');
-      if (cntEl) cntEl.textContent = `${sched.count} قسط (${freq})`;
-      if (valEl) valEl.textContent = `${sched.singleVal.toLocaleString('ar-EG')} ج.م`;
-      return sched;
+      const paidEl = document.getElementById('clientAptPaidDisplay');
+      if (cntEl) cntEl.textContent = saleType === 'resale' ? `${rs.remainingCount} من ${rs.count} قسط (${freq})` : `${rs.count} قسط (${freq})`;
+      if (valEl) valEl.textContent = `${rs.singleVal.toLocaleString('ar-EG')} ج.م`;
+      if (paidEl) paidEl.textContent = `${rs.paidAmount.toLocaleString('ar-EG')} ج.م`;
+      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
     }
 
     function fmtPostedAt(ms) {
@@ -4014,6 +4141,12 @@
         if (ph.length < 10) bad.push('اكتب رقم موبايل صحيح للتواصل');
         if (String(o.notes || '').trim().length < 10) bad.push('اكتب وصف واضح للعقار (تفاصيل الموقع والحالة والتشطيب)');
       }
+      const apd = o.apartmentPaymentDelivery;
+      if (apd && apd.payMode === 'installments' && !(Number(apd.years) > 0)) bad.push('استكمل بيانات التقسيط (المدة بالسنوات)');
+      const cd = o.compoundDetails;
+      if (cd && cd.freq && cd.freq !== 'كاش' && cd.saleType && !(Number(cd.years) > 0)) bad.push('استكمل بيانات التقسيط (المدة بالسنوات)');
+      if (apd && apd.saleType === 'resale' && (apd.paidInstallments || 0) > (apd.installmentsCount || 0)) bad.push('عدد الأقساط المدفوعة أكبر من إجمالي عدد الأقساط');
+      if (cd && cd.saleType === 'resale' && (cd.paidCount || 0) > (cd.instCount || 0)) bad.push('عدد الأقساط المدفوعة أكبر من إجمالي عدد الأقساط');
       return bad;
     }
     function blockIfBadListing(o, isClient) {
@@ -4073,9 +4206,11 @@
               downPayment,
               years,
               freq,
-              remainingAmount: sched ? sched.remaining : 0,
+              saleType: sched ? sched.saleType : 'new',
+              remainingAmount: sched ? (sched.saleType === 'resale' ? sched.remainingAmount : sched.remaining) : 0,
               installmentsCount: sched ? sched.count : 0,
-              singleInstallmentVal: sched ? sched.singleVal : 0
+              singleInstallmentVal: sched ? sched.singleVal : 0,
+              ...(sched && sched.saleType === 'resale' ? { paidInstallments: sched.paidN, paidAmount: sched.paidAmount, remainingInstallmentsCount: sched.remainingCount, remainingYears: sched.remainingYears } : {})
             };
           } else {
             payStatus = `كاش بالكامل (${deliveryTime} — ${finishStatus})`;
