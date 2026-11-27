@@ -175,6 +175,7 @@ img{-webkit-user-drag:none;user-drag:none}
 </style>
 <style id="badge-v1">/* bigger category badge everywhere; delete this block to restore */
 .hb-cat,article span.absolute.top-3.right-3{font-size:13px!important;padding:5px 12px!important;border-radius:999px!important;color:#fbbf24!important;background:rgba(10,20,45,.92)!important;border:1px solid rgba(251,191,36,.55)!important;box-shadow:0 2px 6px rgba(0,0,0,.4);line-height:1.2}
+.hb-loc{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.5}
 #galleryCatBadge{position:absolute;top:10px;right:10px;z-index:5;font-size:14px;font-weight:900;padding:6px 14px;border-radius:999px;color:#fbbf24;background:rgba(10,20,45,.92);border:1px solid rgba(251,191,36,.55);box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none}
 </style>
 </head>
@@ -5884,10 +5885,10 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     var im=(p.images&&p.images[0])||''; var price=Number(p.totalPrice||0);
     return '<div class="hb-card bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md overflow-hidden" data-id="'+esc(p.id)+'" onclick="openImageGallery(\''+esc(p.id)+'\',0)">'
       +'<div class="hb-ph bg-slate-200">'+(im?'<img src="'+esc(im)+'" '+(first?'':'loading="lazy" ')+'decoding="async" referrerpolicy="no-referrer" alt="">':'')+'<span class="hb-cat absolute top-2.5 right-2.5 bg-navy-900/90 text-gold-400 text-[10px] font-black px-2.5 py-1 rounded-full">'+esc(getCategoryLabel(p.category))+'</span>'+(p.sold?'<span class="absolute top-2.5 left-2.5 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full">تم البيع</span>':'')+'</div>'
-      +'<div class="hb-bd p-3.5 space-y-2"><div class="flex flex-wrap gap-1.5">'+(p.subcategory?'<span class="hb-pill bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.subcategory)+'</span>':'')+(p.area?'<span class="hb-pill bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.area)+' م²</span>':'')+'</div>'
+      +'<div class="hb-bd p-3.5 space-y-2"><div class="flex flex-wrap gap-1.5">'+(p.location?'<span class="hb-pill bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.location)+'</span>':'')+(p.area?'<span class="hb-pill bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.area)+' م²</span>':'')+'</div>'
       +'<div class="hb-t text-sm font-black text-navy-900 leading-snug">'+esc(p.title)+'</div>'
       +'<div class="hb-pr bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between"><span class="text-[10px] font-bold text-slate-500">السعر المطلوب</span><span class="text-sm font-black text-emerald-700">'+(price>0?price.toLocaleString('ar-EG')+' ج.م':'اتصل للسعر')+'</span></div>'
-      +(p.location?'<div class="hb-loc text-[11px] font-bold text-slate-500 truncate"><i class="fa-solid fa-location-dot text-gold-600"></i> '+esc(p.location)+'</div>':'')+'</div></div>';
+      +(p.subcategory?'<div class="hb-loc text-[11px] font-bold text-slate-500 truncate"><i class="fa-solid fa-tag text-gold-600"></i> '+esc(p.subcategory)+'</div>':'')+'</div></div>';
   }
   function rowHtml(rk,list,open){
     return (list.length?'<button type="button" class="hb-ar r w-8 h-8 rounded-full bg-black/65 text-gold-400 items-center justify-center cursor-pointer" onclick="window.__home.step(\''+esc(rk)+'\',-1)"><i class="fa-solid fa-chevron-right text-xs"></i></button><button type="button" class="hb-ar l w-8 h-8 rounded-full bg-black/65 text-gold-400 items-center justify-center cursor-pointer" onclick="window.__home.step(\''+esc(rk)+'\',1)"><i class="fa-solid fa-chevron-left text-xs"></i></button>':'')
@@ -5932,7 +5933,9 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     if(grid) grid.style.display=(home&&!window.__homeAll)?'none':'';
     if(home) render();
   }
-  var _cc=createPropertyCardHTML; createPropertyCardHTML=function(item){ var h=_cc(item); return h.replace('<article ','<article data-pid="'+esc(item.id)+'" '); };
+  var _cc=createPropertyCardHTML; createPropertyCardHTML=function(item){ var h=_cc(item); h=h.replace('<article ','<article data-pid="'+esc(item.id)+'" ');
+    if(item.subcategory){ var m='<span class="text-base font-black text-emerald-700">', i=h.indexOf(m); if(i>-1){ var j=h.indexOf('</div>',i); if(j>-1) h=h.slice(0,j+6)+'<div class="sub-line text-[11px] font-bold text-slate-600 flex items-center gap-1.5"><i class="fa-solid fa-tag text-gold-600"></i><span>'+esc(item.subcategory)+'</span></div>'+h.slice(j+6); } }
+    return h; };
   function groupGrid(){
     var grid=document.getElementById('propertiesGrid'); if(!grid||typeof currentTab==='undefined'||!GROUPED[currentTab]) return;
     var arts=grid.querySelectorAll('article[data-pid]'); if(!arts.length||grid.dataset.grouped==='1'&&false) return;
