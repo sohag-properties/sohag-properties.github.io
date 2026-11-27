@@ -22,9 +22,9 @@
   window.premAdmOpen = function () { root().style.display = 'block'; document.body.style.overflow = 'hidden'; draw(); };
   window.premAdmTab = function (t) { tab = t; draw(); };
   function draw() {
-    var T = [['pay', 'طلبات الدفع'], ['subs', 'المشتركين'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات']];
+    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات']];
     root().innerHTML = '<div style="max-width:760px;margin:0 auto;padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">👑 الخدمات المدفوعة (تجريبي)</b><button onclick="premAdmClose()" style="' + B2 + '">إغلاق ✕</button></div><div style="margin:8px 0">' + T.map(function (x) { return '<button onclick="premAdmTab(\'' + x[0] + '\')" style="' + (tab === x[0] ? B : B2) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="pab">...</div></div>';
-    ({ pay: vPay, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq })[tab]();
+    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq })[tab]();
   }
   function body(h) { var e = document.getElementById('pab'); if (e) e.innerHTML = h; }
   function box(h) { return '<div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:8px 0;font-size:13px">' + h + '</div>'; }
@@ -45,6 +45,22 @@
     var g = function (p) { var e = document.getElementById(p + id); return e ? e.value : ''; };
     if (st === 'rejected' && !confirm('رفض الطلب؟')) return;
     rpc('admin_prem_pay_decide', { p_id: id, p_status: st, p_note: null, p_username: g('cu'), p_password: g('cp'), p_days: parseInt(g('cd')) || null }).then(function () { toast(st === 'confirmed' ? 'تم التأكيد وإنشاء الحساب' : 'تم الرفض'); vPay(); }).catch(fail);
+  };
+
+  /* statement of all members + per-member usage */
+  var EV = { login: 'دخول', logout: 'خروج', device_bound: 'ربط الجهاز', login_other_device: 'محاولة دخول من جهاز آخر (مرفوضة)', login_expired: 'محاولة دخول بعد الانتهاء', view_contracts: 'فتح نماذج العقود', download_contract: 'تحميل عقد', request_consultation: 'طلب استشارة', request_inspection: 'طلب معاينة' };
+  function vStmt() {
+    rpc('admin_prem_statement').then(function (l) {
+      var act = l.filter(function (x) { return !x.expired && x.status === 'active'; }).length;
+      body(box('<b>ملخص:</b> ' + l.length + ' مشترك | نشط ' + act + ' | منتهي/موقوف ' + (l.length - act) + ' | إجمالي المدفوع ' + l.reduce(function (a, x) { return a + (+x.paid_egp || 0); }, 0) + ' جنيه') +
+        l.map(function (x) { return box('<div style="display:flex;justify-content:space-between"><b>' + esc(x.display_name) + ' (' + esc(x.username) + ')</b><span>' + (x.expired ? '⛔ منتهي' : x.status === 'suspended' ? '⏸ موقوف' : '✅ نشط') + '</span></div><div>الباقة: ' + esc(x.plan || '-') + ' | مدفوع: ' + esc(x.paid_egp == null ? '-' : x.paid_egp) + ' جنيه</div><div>من ' + d(x.start_at) + '<br>إلى ' + d(x.end_at) + '</div><div style="margin-top:4px">دخول: <b>' + x.logins + '</b> | آخر دخول: ' + (x.last_login ? d(x.last_login) : '-') + '</div><div>عقود محملة: <b>' + x.downloads + '</b> | طلبات: <b>' + x.requests + '</b> | محاولات مرفوضة: <b style="color:' + (x.blocked ? '#b91c1c' : 'inherit') + '">' + x.blocked + '</b></div><button onclick="premDetail(\'' + x.id + '\')" style="' + B + '">التفاصيل الكاملة</button>'); }).join('') || box('لا يوجد مشتركين')); }).catch(fail);
+  }
+  window.premDetail = function (id) {
+    rpc('admin_prem_sub_activity', { p_id: id }).then(function (a) {
+      var s = a.sub || {};
+      body('<button onclick="premAdmTab(\'stmt\')" style="' + B2 + '">◀ رجوع للكشف</button>' + box('<b>' + esc(s.display_name) + ' (' + esc(s.username) + ')</b><div>الباقة: ' + esc(s.plan || '-') + ' | مدفوع: ' + esc(s.paid_egp == null ? '-' : s.paid_egp) + '</div><div>بداية: ' + d(s.start_at) + '</div><div>نهاية: ' + d(s.end_at) + '</div><div>ربط الجهاز: ' + (s.bound_at ? d(s.bound_at) : 'غير مربوط') + '</div><div>دخول: ' + a.logins + ' | عقود: ' + a.downloads + ' | طلبات: ' + a.requests + ' | محاولات مرفوضة: ' + a.blocked_attempts + '</div>') +
+        box('<b>سجل النشاط (آخر 200)</b>' + (a.events.length ? a.events.map(function (e) { return '<div style="padding:5px 0;border-bottom:1px dashed #e2e8f0"><span style="color:#64748b">' + d(e.ts) + '</span> - ' + esc(EV[e.event] || e.event) + (e.detail ? ': ' + esc(e.detail) : '') + '</div>'; }).join('') : '<div>لا يوجد نشاط</div>')));
+    }).catch(fail);
   };
   /* subscribers */
   function vSubs() {
