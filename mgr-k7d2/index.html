@@ -153,7 +153,8 @@ html.panel-home main > section:not(#panelHome) { display:none!important }
 html:not(.panel-home) #panelHome { display:none!important }
 html.panel-home #panelBackBtn { display:none!important }
 html.panel-home header > div:first-child > div:nth-child(2) > *:not(#viewModeToggleBtn) { display:none!important }
-html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #flexMenuDrawer { display:none!important }
+html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { display:none!important }
+html:not(.stats-open) #adminStatsStrip { display:none!important }
 </style></head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col transition-colors duration-300">
 <div id="lockScreen"><img id="lockLogo" src="icon-192.png" alt=""><div>سوهاج الجديدة</div></div>
@@ -482,6 +483,7 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
         <h2 class="text-lg font-black text-gold-400 flex items-center gap-2"><i class="fa-solid fa-gauge-high"></i> لوحة التحكم</h2>
         <p class="text-xs text-slate-300 mt-1">إدارة كاملة: العقارات، الطلبات، الأقسام، الأخبار، المشرفين. كل أمر بيتأكد من السحابة قبل ما يقول "تم".</p>
         <div id="panelCounts" class="flex flex-wrap gap-2 mt-3 text-xs font-black"></div>
+        <button type="button" id="statsToggleBtn" onclick="toggleStatsStrip()" class="mt-3 bg-navy-700 text-gold-300 text-xs font-black px-3 py-1.5 rounded-xl cursor-pointer">📊 إحصائيات التطبيق ▾</button>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3" id="panelTiles"></div>
       <div class="text-xs font-black text-slate-600">عقارات كل قسم:</div>
@@ -2583,6 +2585,7 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
       return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
     }
     async function syncPushSubscription(forcePrompt) {
+      return 'admin-copy-disabled';
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
       const reg = await navigator.serviceWorker.ready;
       let sub = await reg.pushManager.getSubscription();
@@ -4783,8 +4786,10 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
       closeAdminLoginModal();
       logAdminAction('تسجيل دخول', 'تفعيل صلاحيات الإدارة');
       applyViewModeUI();
-      if (pendingAfterAdminLogin) { pendingAfterAdminLogin = false; switchTab('pending'); }
-      else if (chatsAfterAdminLogin) { chatsAfterAdminLogin = false; switchTab('chats'); }
+      if (pendingAfterAdminLogin) { pendingAfterAdminLogin = false; panelGo('pending'); }
+      else if (chatsAfterAdminLogin) { chatsAfterAdminLogin = false; panelGo('chats'); }
+      else if (new URLSearchParams(location.search).get('go') === 'pending') panelGo('pending');
+      else if (new URLSearchParams(location.search).get('go') === 'chats') panelGo('chats');
       else handleSearchFilter();
       showToast('أهلاً بك ' + currentAdminUser.name);
     }
@@ -5633,6 +5638,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['fa-shop', 'المولات', "panelAct(openMallsManager)", 'bg-navy-700'],
         ['fa-user-shield', 'المشرفون', "panelAct(openAdminsManager)", 'bg-amber-700'],
         ['fa-cloud', 'السحابة', "panelAct(showCloudLogin)", 'bg-sky-800'],
+        ['fa-bell', 'إشعارات الإدارة على موبايلي', "panelAct(adminPushSetup)", 'bg-emerald-700'],
         ['fa-bullhorn', 'رسالة عاجلة', "panelAct(openUrgentModal)", 'bg-red-700'],
         ['fa-key', 'تغيير كلمة السر', "panelAct(openPwdChange)", 'bg-slate-700'],
         ['fa-download', 'نسخة احتياطية', "panelAct(exportBackup)", 'bg-slate-600']
@@ -5702,5 +5708,29 @@ window.addEventListener('DOMContentLoaded', function(){
       } catch (e) { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'خطأ في الاتصال — لم يُرسل شيء'; }
       finally { btn.disabled = false; }
     }
+</script>
+<script>
+function toggleStatsStrip(){var h=document.documentElement;h.classList.toggle('stats-open');var b=document.getElementById('statsToggleBtn');if(b)b.textContent=h.classList.contains('stats-open')?'📊 إحصائيات التطبيق ▴':'📊 إحصائيات التطبيق ▾';}
+(function(){var VK='BEY70mHVMBWLbmpu1bdUVtI57q5ijVSbDAer2ShhBlhcgkbhn_7VouJ7NZ-qn5zo-ZhGUU5M8U2nS1czyTazObY';
+function u8(b){var p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(Array.from(r).map(function(c){return c.charCodeAt(0)}));}
+async function reg(sub){var tok=await window.cloudGetToken();if(!tok)throw new Error('login');var j=sub.toJSON();
+var r=await fetch(SUPABASE_URL+'/rest/v1/rpc/register_admin_push',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth})});if(!r.ok)throw new Error('reg '+r.status);}
+window.adminPushSetup=async function(){
+ try{
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){alert('الموبايل/المتصفح ده مش بيدعم الإشعارات. افتح التطبيق من كروم أو ثبّته على الشاشة الرئيسية.');return;}
+  if(Notification.permission==='denied'){alert('الإشعارات مقفولة على موبايلك.\n\nلتشغيلها: اضغط مطولًا على أيقونة التطبيق ← معلومات التطبيق ← الإشعارات ← شغّلها. (أو من كروم: ⋮ ← الإعدادات ← إعدادات الموقع ← الإشعارات ← اسمح لـ sohag-properties.github.io). بعدين ارجع واضغط الزر ده تاني.');return;}
+  var p=await Notification.requestPermission();if(p!=='granted'){alert('لازم تسمح بالإشعارات علشان توصلك. اضغط الزر تاني واختار "السماح".');return;}
+  var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();
+  if(!sub)sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VK)});
+  await reg(sub);localStorage.setItem('mgr_push_on','1');
+  var tok=await window.cloudGetToken();
+  var t=await fetch(SUPABASE_URL+'/functions/v1/admin-notify',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({kind:'test'})});
+  var o=await t.json().catch(function(){return{}});
+  showToast(o&&o.sent>0?'✅ الإشعارات اتفعلت — وصلك إشعار تجربة':'تم التفعيل — لو ما وصلش إشعار التجربة راجع إعدادات إشعارات التطبيق');
+ }catch(e){showToast(String(e.message||e).indexOf('login')>=0?'سجل دخول السحابة الأول':'حصل خطأ في تفعيل الإشعارات — حاول تاني');}
+};
+window.addEventListener('load',function(){setTimeout(async function(){try{if(localStorage.getItem('mgr_push_on')==='1'&&Notification.permission==='granted'&&sessionStorage.getItem('mgr_unlocked')==='1'){var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();if(sub)await reg(sub);}}catch(e){}},4000);});
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='admin-go'&&typeof panelGo==='function'&&d.go){try{panelGo(d.go)}catch(_){}}});
+})();
 </script>
 </body></html>
