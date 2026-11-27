@@ -63,11 +63,14 @@
     .news-ticker-track {
       display: inline-block;
       white-space: nowrap;
-      animation: tickerScroll 28s linear infinite;
+      animation: tickerScroll 70s linear infinite;
     }
     .news-ticker-wrap:hover .news-ticker-track {
       animation-play-state: paused;
     }
+    .ticker-sticky { position: sticky; top: 0; z-index: 40; }
+    @keyframes oppBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+    .opp-blink { animation: oppBlink 1.1s ease-in-out infinite; }
     body.dark-mode {
       background-color: #070d17;
       color: #f1f5f9;
@@ -150,26 +153,6 @@
     <div class="max-w-7xl mx-auto flex items-center justify-center gap-2">
       <span class="bg-white text-red-700 px-2 py-0.5 rounded-full text-[11px] animate-pulse">تنبيه عاجل</span>
       <span id="urgentNewsText"></span>
-    </div>
-  </div>
-
-  <!-- ==================== 1.5 الشريط الإخباري المتحرك ==================== -->
-  <div class="bg-navy-950 text-white border-b border-gold-500/40 text-xs">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center gap-2">
-      <span class="bg-gold-500 text-navy-950 font-black px-2.5 py-0.5 rounded-lg text-[11px] shrink-0 flex items-center gap-1">
-        <i class="fa-solid fa-bullhorn"></i> آخر الأخبار
-      </span>
-      <div class="news-ticker-wrap flex-1 overflow-hidden relative h-5 flex items-center">
-        <div id="liveNewsTickerText" class="news-ticker-track font-bold text-slate-200 cursor-pointer" onclick="switchTab('news')">📰 متابعة مستمرة لأعمال الترفيق والطرق بالمجاورات الجديدة بمدينة سوهاج الجديدة   ★   🏢 عرض جديد: قطعة أرض متميزة ناصية على شارع رئيسي بمجاورة 8 (مجاورة 8 - 460م²)   ★   🏢 عرض جديد: شقة سوبر لوكس 165م بكمبوند جاردن سيتي 4 (مجاورة 1 - كمبوند جاردن سيتي 4 - 165م²)   ★   🏢 عرض جديد: محل تجاري 45م بالدور الأرضي واجهة رئيسية بالداون تاون (الداون تاون (Downtown) - 45م²)</div>
-      </div>
-      <a href="./download/" id="headerDlBtn" class="bg-gold-500 hover:bg-gold-400 text-navy-950 font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
-        <i class="fa-solid fa-mobile-screen-button"></i>
-        <span>حمّل التطبيق</span>
-      </a>
-      <button type="button" id="mobileNotifyBtn" onclick="requestMobileNotifications()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
-        <i class="fa-solid fa-bell"></i>
-        <span id="mobileNotifyLabel">إشعارات الموبايل</span>
-      </button>
     </div>
   </div>
 
@@ -325,6 +308,9 @@
 
         <!-- شريط التبويبات السريعة -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1">
+          <button type="button" onclick="switchTab('opportunity')" id="tab-opportunity" class="tab-btn opp-blink bg-red-600 text-white px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition font-black">
+            <i class="fa-solid fa-bolt"></i> فرصة
+          </button>
           <button type="button" onclick="switchTab('latest')" id="tab-latest" class="tab-btn px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
             <i class="fa-solid fa-fire"></i> أحدث العروض
           </button>
@@ -424,6 +410,27 @@
       </div>
     </nav>
   </header>
+
+  <!-- ==================== 1.5 الشريط الإخباري المتحرك ==================== -->
+  <div class="bg-navy-950 text-white border-b border-gold-500/40 text-xs ticker-sticky">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-1.5 flex items-center gap-2">
+      <span class="bg-gold-500 text-navy-950 font-black px-2.5 py-0.5 rounded-lg text-[11px] shrink-0 flex items-center gap-1">
+        <i class="fa-solid fa-bullhorn"></i> آخر الأخبار
+      </span>
+      <div class="news-ticker-wrap flex-1 overflow-hidden relative h-5 flex items-center">
+        <div id="liveNewsTickerText" class="news-ticker-track font-bold text-slate-200 cursor-pointer" onclick="switchTab('news')">📰 متابعة مستمرة لأعمال الترفيق والطرق بالمجاورات الجديدة بمدينة سوهاج الجديدة   ★   🏢 عرض جديد: قطعة أرض متميزة ناصية على شارع رئيسي بمجاورة 8 (مجاورة 8 - 460م²)   ★   🏢 عرض جديد: شقة سوبر لوكس 165م بكمبوند جاردن سيتي 4 (مجاورة 1 - كمبوند جاردن سيتي 4 - 165م²)   ★   🏢 عرض جديد: محل تجاري 45م بالدور الأرضي واجهة رئيسية بالداون تاون (الداون تاون (Downtown) - 45م²)</div>
+      </div>
+      <a href="./download/" id="headerDlBtn" class="bg-gold-500 hover:bg-gold-400 text-navy-950 font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+        <span>حمّل التطبيق</span>
+      </a>
+      <button type="button" id="mobileNotifyBtn" onclick="requestMobileNotifications()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-black px-2.5 py-1 rounded-lg text-[11px] shrink-0 flex items-center gap-1 transition cursor-pointer">
+        <i class="fa-solid fa-bell"></i>
+        <span id="mobileNotifyLabel">إشعارات الموبايل</span>
+      </button>
+    </div>
+  </div>
+
 
   <!-- ==================== 3. المحتوى الرئيسي ==================== -->
   <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
@@ -1169,6 +1176,13 @@
             <option value="yes">قابل للتفاوض</option>
             <option value="no">غير قابل للتفاوض</option>
           </select>
+        </div>
+
+        <div id="adminOpportunityWrap" class="bg-red-50 border border-red-300 p-3 rounded-2xl flex items-start gap-2.5">
+          <input type="checkbox" id="propOpportunity" onchange="updateOppModalStatus()" class="mt-0.5 w-4 h-4 accent-red-600 cursor-pointer shrink-0">
+          <label for="propOpportunity" class="text-xs font-black text-red-900 cursor-pointer">⚡ فرصة ٤٨ ساعة — يظهر العرض في قسم "فرصة" الأحمر أعلى الصفحة مع عداد تنازلي، وبعد ٤٨ ساعة يختفي من القسم تلقائيًا (العرض نفسه يفضل موجود في قسمه العادي).
+            <div id="oppStatusText" class="text-[11px] font-bold text-red-700 mt-1"></div>
+          </label>
         </div>
 
         <!-- نظام الـ 4 أقساط السنوية للأراضي غير المرفقة -->
@@ -2953,9 +2967,46 @@
         compounds: 'وحدات الكمبوندات',
         houses: 'المنازل والفيلات',
         malls: 'المولات التجارية',
-        factories: 'المصانع والمخازن'
+        factories: 'المصانع والمخازن',
+        opportunity: 'فرص ٤٨ ساعة'
       };
       return map[cat] || cat;
+    }
+
+    function oppActive(item) { return !!(item && item.opportunity && item.oppExpiresAt && item.oppExpiresAt > Date.now()); }
+    function oppRemainingText(exp) {
+      const ms = exp - Date.now();
+      if (ms <= 0) return 'انتهت';
+      const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+      return Number(h).toLocaleString('ar-EG') + ' ساعة و ' + Number(m).toLocaleString('ar-EG') + ' دقيقة';
+    }
+    function updateOppCountdowns() {
+      let anyExpired = false;
+      document.querySelectorAll('[data-opp-exp]').forEach(el => {
+        const exp = +el.getAttribute('data-opp-exp');
+        if (Date.now() > exp) anyExpired = true;
+        else el.textContent = oppRemainingText(exp);
+      });
+      if (anyExpired) handleSearchFilter();
+    }
+    setInterval(updateOppCountdowns, 30000);
+    function toggleOpportunity(id) {
+      const idx = properties.findIndex(x => x.id === id);
+      if (idx === -1) return;
+      if (oppActive(properties[idx])) {
+        properties[idx].opportunity = false;
+        properties[idx].oppExpiresAt = null;
+        showToast('اتشال العرض من قسم الفرص');
+        logAdminAction('إزالة من الفرص', properties[idx].title);
+      } else {
+        properties[idx].opportunity = true;
+        properties[idx].oppStartedAt = Date.now();
+        properties[idx].oppExpiresAt = Date.now() + 48 * 3600 * 1000;
+        showToast('اتضاف العرض لقسم الفرص ٤٨ ساعة ✓');
+        logAdminAction('إضافة لقسم الفرص ٤٨ ساعة', properties[idx].title);
+      }
+      safeSaveStorage('abuelhamd_properties', properties);
+      handleSearchFilter();
     }
 
     function updateStats() {
@@ -3094,7 +3145,9 @@
         list = list.filter(p => !p.hidden && !hiddenSections[p.category]);
       }
 
-      if (currentTab !== 'latest' && currentTab !== 'news' && currentTab !== 'citymap' && currentTab !== 'landmarks' && currentTab !== 'pending') {
+      if (currentTab === 'opportunity') {
+        list = list.filter(p => oppActive(p));
+      } else if (currentTab !== 'latest' && currentTab !== 'news' && currentTab !== 'citymap' && currentTab !== 'landmarks' && currentTab !== 'pending') {
         list = list.filter(p => p.category === currentTab);
       }
 
@@ -3142,6 +3195,12 @@
       const waMsg = encodeURIComponent(`السلام عليكم، أستفسر عن العرض العقاري:\n*${item.title}*\nالموقع: ${item.location}\n${item.area ? 'المساحة: ' + item.area + ' م²\n' : ''}السعر: ${priceStr} ج.م${item.negotiable === true ? ' (قابل للتفاوض)' : (item.negotiable === false ? ' (غير قابل للتفاوض)' : '')}`);
 
       let extraSpecsHTML = '';
+      if (oppActive(item)) {
+        extraSpecsHTML += `<div class="bg-red-50 border border-red-300 text-red-900 px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5">
+          <span class="opp-blink inline-block w-2 h-2 rounded-full bg-red-600 shrink-0"></span>
+          <span>فرصة — متبقي: <span data-opp-exp="${item.oppExpiresAt}">${oppRemainingText(item.oppExpiresAt)}</span></span>
+        </div>`;
+      }
       if (item.installments4Info) {
         extraSpecsHTML += `<div class="bg-sky-50 border border-sky-200 text-sky-900 px-2.5 py-1.5 rounded-xl text-[11px] font-black">
           نظام 4 أقساط سنوية: مدفوع ${item.installments4Info.paid} • متبقي ${item.installments4Info.remaining} أقساط
@@ -3234,6 +3293,7 @@
           <div class="font-bold text-red-900">المالك والهاتف: ${item.ownerPhone || 'غير مسجل'}</div>
         </div>
         <div class="flex flex-wrap items-center gap-1.5 pt-1">
+          <button type="button" onclick="toggleOpportunity('${item.id}')" class="flex-1 ${oppActive(item) ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-100 hover:bg-red-200 text-red-900'} text-[11px] font-black py-1.5 px-2 rounded-lg cursor-pointer"><i class="fa-solid fa-bolt"></i> ${oppActive(item) ? 'إزالة الفرصة' : 'فرصة ٤٨س'}</button>
           <button type="button" onclick="editProperty('${item.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-black py-1.5 px-2 rounded-lg cursor-pointer">تعديل</button>
           <button type="button" onclick="togglePropertyHidden('${item.id}')" class="flex-1 ${item.hidden ? 'bg-purple-700 hover:bg-purple-600' : 'bg-slate-600 hover:bg-slate-500'} text-white text-[11px] font-black py-1.5 px-2 rounded-lg cursor-pointer">${item.hidden ? 'إظهار للجمهور' : 'إخفاء عن الجمهور'}</button>
           <button type="button" onclick="toggleSoldStatus('${item.id}')" class="flex-1 ${item.sold ? 'bg-emerald-600' : 'bg-amber-600'} text-white text-[11px] font-black py-1.5 px-2 rounded-lg cursor-pointer">${item.sold ? 'إعادة كمتاح' : 'تم البيع'}</button>
@@ -3244,6 +3304,7 @@
       return `
         <article class="bg-white rounded-3xl border ${item.hidden ? 'border-purple-400 opacity-75' : 'border-slate-200'} shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between relative">
           ${item.sold ? `<div class="sold-stamp">تم البيع</div>` : ''}
+          ${oppActive(item) ? `<div class="absolute top-2 left-2 z-20 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg opp-blink flex items-center gap-1"><i class="fa-solid fa-bolt"></i> فرصة</div>` : ''}
           <div>
             <div class="relative h-48 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 flex items-center justify-center overflow-hidden group"
                  data-slide-prop="${item.id}" data-slide-idx="0"
@@ -3306,6 +3367,7 @@
                 <span class="text-base font-black text-emerald-700">${priceStr} <small class="text-xs">ج.م</small></span>
               </div>
               ${item.negotiable === true ? '<div class="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 flex items-center gap-1.5"><i class="fa-solid fa-handshake"></i> السعر قابل للتفاوض</div>' : (item.negotiable === false ? '<div class="text-[11px] font-black text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-1.5 flex items-center gap-1.5"><i class="fa-solid fa-ban"></i> السعر غير قابل للتفاوض</div>' : '')}
+              ${item.videoUrl ? `<button type="button" onclick="openVideoPlayer('${item.id}')" class="w-full text-[11px] font-black text-white bg-purple-700 hover:bg-purple-600 border border-purple-500 rounded-xl px-3 py-2 flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"><i class="fa-solid fa-circle-play text-sm"></i> يوجد فيديو معاينة للعقار — اضغط للمشاهدة</button>` : ''}
 
               <div class="text-[11px] font-black text-navy-800 flex items-center gap-1.5">
                 <i class="fa-solid fa-circle-check text-emerald-600"></i>
@@ -3327,12 +3389,6 @@
             <button type="button" onclick="sharePropertyToFacebook('${item.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer">
               <i class="fa-brands fa-facebook"></i> فيسبوك
             </button>
-            ${item.videoUrl ? `
-              <button type="button" onclick="openVideoPlayer('${item.id}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1 cursor-pointer">
-                <i class="fa-solid fa-play"></i>
-                <span>فيديو</span>
-              </button>
-            ` : ''}
           </div>
         </article>
       `;
@@ -3457,9 +3513,14 @@
 
         tempAdminImages = [...(item.images || [])];
         renderAdminImagesPreview();
+        document.getElementById('propOpportunity').checked = oppActive(item);
+        window.__oppWasActive = oppActive(item);
+        updateOppModalStatus(item);
       } else {
         modalTitle.innerHTML = `<i class="fa-solid fa-circle-plus text-emerald-600"></i> إضافة عرض عقاري جديد`;
         onAdminCategoryChange();
+        window.__oppWasActive = false;
+        updateOppModalStatus(null);
       }
 
       document.getElementById('propertyModal').classList.remove('hidden');
@@ -3778,6 +3839,18 @@
       if (cat === 'malls') { mallRecalc('admin'); }
     }
 
+    function updateOppModalStatus(item) {
+      const chk = document.getElementById('propOpportunity');
+      const st = document.getElementById('oppStatusText');
+      if (!chk || !st) return;
+      if (chk.checked) {
+        if (item && oppActive(item)) st.textContent = 'الفرصة شغالة — متبقي: ' + oppRemainingText(item.oppExpiresAt) + ' (الحفظ يحتفظ بنفس الموعد)';
+        else st.textContent = 'هتبدأ ٤٨ ساعة جديدة من وقت الحفظ';
+      } else {
+        st.textContent = (item && item.opportunity) ? 'الفرصة منتهية أو ملغاة — الحفظ هيشيلها نهائيًا' : '';
+      }
+    }
+
     function saveProperty(e) {
       e.preventDefault();
       try {
@@ -3929,6 +4002,23 @@
         if (cat === 'compounds' && propObj.compoundDetails && propObj.compoundDetails.saleType === 'resale') {
           const ovC = parseFloat(document.getElementById('adminCompOver').value) || 0;
           if (ovC > 0) propObj.overPrice = ovC;
+        }
+
+        const oppWanted = document.getElementById('propOpportunity').checked;
+        const prevOppItem = editId ? properties.find(p => p.id === editId) : null;
+        if (oppWanted) {
+          if (prevOppItem && oppActive(prevOppItem)) {
+            propObj.opportunity = true;
+            propObj.oppStartedAt = prevOppItem.oppStartedAt;
+            propObj.oppExpiresAt = prevOppItem.oppExpiresAt;
+          } else {
+            propObj.opportunity = true;
+            propObj.oppStartedAt = Date.now();
+            propObj.oppExpiresAt = Date.now() + 48 * 3600 * 1000;
+          }
+        } else {
+          propObj.opportunity = false;
+          propObj.oppExpiresAt = null;
         }
 
         if (blockIfBadListing(propObj, false)) return;
