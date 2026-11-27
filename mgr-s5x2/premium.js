@@ -27,7 +27,7 @@
   }
   window.premLogin = function () {
     var u = document.getElementById('pu').value, p = document.getElementById('pp').value; msg('...', true);
-    rpc('prem_login', { p_username: u, p_password: p, p_device: dev() }).then(function (r) { tok = r.token; offset = new Date(r.server_now).getTime() - Date.now(); try { sessionStorage.setItem('prem_tok', tok); } catch (e) { } return rpc('prem_me', { p_token: tok }); }).then(function (m) { me = m; dash(); }).catch(function (e) { msg(e.message); });
+    rpc('prem_login', { p_username: u, p_password: p, p_device: dev() }).then(function (r) { if (r.error) { var e = new Error(ERR[r.error] || 'حصل خطأ'); e.code = r.error; throw e; } tok = r.token; offset = new Date(r.server_now).getTime() - Date.now(); try { sessionStorage.setItem('prem_tok', tok); } catch (e) { } return rpc('prem_me', { p_token: tok }); }).then(function (m) { me = m; dash(); }).catch(function (e) { msg(e.message); });
   };
   function out(why) { clearInterval(timer); if (tok) rpc('prem_logout', { p_token: tok }).catch(function () { }); tok = null; me = null; try { sessionStorage.removeItem('prem_tok'); } catch (e) { } landing(); if (why) msg(why); }
   window.premLogout = function () { out(); };
