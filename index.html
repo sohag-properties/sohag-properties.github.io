@@ -2134,6 +2134,7 @@
         downPayment,
         years,
         instValue: rs.singleVal,
+        lastInstValue: rs.lastVal,
         instCount: rs.count,
         paidCount: rs.paidN,
         paidAmount: rs.paidAmount,
@@ -2164,6 +2165,7 @@
       if (note) {
         if (total > 0 && years > 0) {
           note.textContent = 'القسط: ' + fmt(rs.singleVal) + ' ج.م × ' + rs.count + ' قسط (' + freq + ')' +
+            (rs.lastVal !== rs.singleVal ? ' (القسط الأخير: ' + fmt(rs.lastVal) + ' ج.م)' : '') +
             (saleType === 'resale'
               ? ' • المدفوع حتى الآن: ' + fmt(rs.paidAmount) + ' ج.م • المتبقي: ' + fmt(rs.remainingAmount) + ' ج.م (' + rs.remainingCount + ' قسط / حوالي ' + rs.remainingYears + ' سنة)'
               : ' • المتبقي بعد المقدم: ' + fmt(rs.remainingAmount) + ' ج.م');
@@ -3089,11 +3091,12 @@
           <div>سعر المتر: <span class="font-black">${Number(ap.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span> • الاستلام: <span class="font-black text-emerald-800">${ap.deliveryTime || 'استلام فوري'}</span> • التشطيب: <span class="font-black">${ap.finishStatus || 'على الطوب'}</span></div>
           ${ap.payMode === 'installments' ? `
             <div>المقدم: <span class="font-black">${Number(ap.downPayment || 0).toLocaleString('ar-EG')} ج.م</span> • نظام التقسيط: <span class="font-black">${ap.freq}</span> لمدة <span class="font-black">${ap.years} سنوات</span> (${ap.installmentsCount} قسط)</div>
-            <div class="text-navy-900 font-black">قيمة كل قسط: ${Number(ap.singleInstallmentVal || 0).toLocaleString('ar-EG')} ج.م</div>
+            <div class="text-navy-900 font-black">قيمة كل قسط: ${Number(ap.singleInstallmentVal || 0).toLocaleString('ar-EG')} ج.م${ap.lastInstallmentVal && ap.lastInstallmentVal !== ap.singleInstallmentVal ? ` • القسط الأخير: ${Number(ap.lastInstallmentVal).toLocaleString('ar-EG')} ج.م` : ''}</div>
             ${ap.saleType === 'resale' ? `
             <div>المدفوع حتى الآن: <span class="font-black">${Number(ap.paidAmount || 0).toLocaleString('ar-EG')} ج.م</span> • المتبقي: <span class="font-black">${Number(ap.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</span> (${Number(ap.remainingInstallmentsCount || 0).toLocaleString('ar-EG')} قسط / حوالي ${ap.remainingYears} سنة) • <span class="font-black text-emerald-800">ريسيل</span></div>` : ''}
+            <div class="text-slate-500">الأرقام تقديرية محسوبة من السعر الإجمالي والمقدم ومدة التقسيط — تُعتمد أقساط العقد عند الاتفاق</div>
           ` : `<div class="text-emerald-800 font-black">نظام السداد: كاش بالكامل</div>`}
-          ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م • كاش المطلوب من المشتري: ${Number((ap.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م</div>` : ''}
+          ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م</div><div class="text-red-700 font-black">كاش البائع (المدفوع حتى الآن + الأوفر): ${Number((ap.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م • المتبقي أقساط: ${Number(ap.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</div>` : ''}
         </div>`;
       }
       if (item.smallInvestorDetails && item.smallInvestorDetails.floor) {
@@ -3107,10 +3110,11 @@
           <div>عمارة: <span class="font-black">${c.building || '-'}</span> • الدور: <span class="font-black">${c.floor || '-'}</span> • الاستلام: <span class="font-black text-indigo-700">${c.delivery || '-'}</span></div>
           <div>سعر المتر (من الإجمالي): <span class="font-black">${Number(c.pricePerMeter || 0).toLocaleString('ar-EG')} ج.م</span> • النظام: <span class="font-black">${c.freq || '-'}</span></div>
           ${c.saleType ? `
-            <div>قيمة القسط: <span class="font-black">${Number(c.instValue || 0).toLocaleString('ar-EG')} ج.م</span> (${c.freq || ''}) × <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')}</span> قسط • المقدم: <span class="font-black">${Number(c.downPayment || 0).toLocaleString('ar-EG')} ج.م</span></div>
+            <div>قيمة القسط: <span class="font-black">${Number(c.instValue || 0).toLocaleString('ar-EG')} ج.م</span> (${c.freq || ''}) × <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')}</span> قسط${c.lastInstValue && c.lastInstValue !== c.instValue ? ` • القسط الأخير: <span class="font-black">${Number(c.lastInstValue).toLocaleString('ar-EG')} ج.م</span>` : ''} • المقدم: <span class="font-black">${Number(c.downPayment || 0).toLocaleString('ar-EG')} ج.م</span></div>
             ${c.saleType === 'resale' ? `<div>المدفوع حتى الآن: <span class="font-black">${Number(c.paidAmount || 0).toLocaleString('ar-EG')} ج.م</span> • المتبقي: <span class="font-black">${Number(c.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</span> (${Number(c.remainingCount || 0).toLocaleString('ar-EG')} قسط / حوالي ${c.remainingYears} سنة) • <span class="font-black text-indigo-700">ريسيل</span></div>` : ''}
             <div>الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>
-            ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م • كاش المطلوب من المشتري: ${Number((c.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م</div>` : ''}
+            <div class="text-slate-500">الأرقام تقديرية محسوبة من السعر الإجمالي والمقدم ومدة التقسيط — تُعتمد أقساط العقد عند الاتفاق</div>
+            ${isAdminMode && item.overPrice ? `<div class="text-red-700 font-black">الأوفر (للإدارة فقط): ${Number(item.overPrice).toLocaleString('ar-EG')} ج.م</div><div class="text-red-700 font-black">كاش البائع (المدفوع حتى الآن + الأوفر): ${Number((c.paidAmount || 0) + item.overPrice).toLocaleString('ar-EG')} ج.م • المتبقي أقساط: ${Number(c.remainingAmount || 0).toLocaleString('ar-EG')} ج.م</div>` : ''}
           ` : (c.instValue ? `<div>المدفوع: <span class="font-black">${Number(c.paid || 0).toLocaleString('ar-EG')} ج.م</span> • القسط: <span class="font-black">${Number(c.instValue).toLocaleString('ar-EG')} ج.م ${c.freq || ''}</span></div><div>الأقساط المتبقية: <span class="font-black">${Number(c.instCount || 0).toLocaleString('ar-EG')} قسط</span> (${Number(c.remInstallments || 0).toLocaleString('ar-EG')} ج.م) • الإجمالي: <span class="font-black text-indigo-700">${Number(item.totalPrice || 0).toLocaleString('ar-EG')} ج.م</span></div>` : c.remInstallments ? `<div>الأقساط المتبقية: <span class="font-black">${Number(c.remInstallments).toLocaleString('ar-EG')} ج.م</span> (${c.duration || ''})</div>` : '')}
         </div>`;
       }
@@ -3593,12 +3597,15 @@
       const count = years > 0 ? Math.max(1, Math.round(years * perYear)) : 0;
       const financed = Math.max(0, (total || 0) - (downPayment || 0));
       const singleVal = count > 0 ? Math.round(financed / count) : 0;
+      // القسط الأخير يستوعب فرق التقريب حتى يطابق مجموع الأقساط (المتبقي بعد المقدم) تمامًا
+      const lastVal = count > 0 ? (financed - singleVal * (count - 1)) : 0;
       const paidN = Math.min(Math.max(0, Math.round(paidCount || 0)), count);
-      const paidAmount = (downPayment || 0) + paidN * singleVal;
+      const paidInstAmount = (count > 0 && paidN >= count) ? financed : paidN * singleVal;
+      const paidAmount = (downPayment || 0) + paidInstAmount;
       const remainingCount = Math.max(0, count - paidN);
       const remainingAmount = Math.max(0, (total || 0) - paidAmount);
       const remainingYears = perYear > 0 ? Math.round((remainingCount / perYear) * 10) / 10 : 0;
-      return { perYear, count, singleVal, paidN, paidAmount, remainingCount, remainingAmount, remainingYears };
+      return { perYear, count, singleVal, lastVal, paidN, paidAmount, remainingCount, remainingAmount, remainingYears };
     }
 
     function recalcAdminAptInstallments() {
@@ -3621,7 +3628,7 @@
       if (cntEl) cntEl.textContent = saleType === 'resale' ? `${rs.remainingCount} من ${rs.count} قسط (${freq})` : `${rs.count} قسط (${freq})`;
       if (valEl) valEl.textContent = `${rs.singleVal.toLocaleString('ar-EG')} ج.م`;
       if (paidEl) paidEl.textContent = `${rs.paidAmount.toLocaleString('ar-EG')} ج.م`;
-      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
+      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, lastVal: rs.lastVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
     }
 
     // ===== المحلات التجارية: المساحة × سعر المتر = الإجمالي، وكاش/تقسيط =====
@@ -3751,6 +3758,7 @@
               remainingAmount: sched.saleType === 'resale' ? sched.remainingAmount : sched.remaining,
               installmentsCount: sched.count,
               singleInstallmentVal: sched.singleVal,
+              lastInstallmentVal: sched.lastVal,
               ...(sched.saleType === 'resale' ? { paidInstallments: sched.paidN, paidAmount: sched.paidAmount, remainingInstallmentsCount: sched.remainingCount, remainingYears: sched.remainingYears } : {})
             };
           } else {
@@ -4116,7 +4124,7 @@
       if (cntEl) cntEl.textContent = saleType === 'resale' ? `${rs.remainingCount} من ${rs.count} قسط (${freq})` : `${rs.count} قسط (${freq})`;
       if (valEl) valEl.textContent = `${rs.singleVal.toLocaleString('ar-EG')} ج.م`;
       if (paidEl) paidEl.textContent = `${rs.paidAmount.toLocaleString('ar-EG')} ج.م`;
-      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
+      return { ppm: base.ppm, saleType, count: rs.count, singleVal: rs.singleVal, lastVal: rs.lastVal, remaining: base.remaining, paidN: rs.paidN, paidAmount: rs.paidAmount, remainingCount: rs.remainingCount, remainingAmount: rs.remainingAmount, remainingYears: rs.remainingYears };
     }
 
     function fmtPostedAt(ms) {
@@ -4210,6 +4218,7 @@
               remainingAmount: sched ? (sched.saleType === 'resale' ? sched.remainingAmount : sched.remaining) : 0,
               installmentsCount: sched ? sched.count : 0,
               singleInstallmentVal: sched ? sched.singleVal : 0,
+              lastInstallmentVal: sched ? sched.lastVal : 0,
               ...(sched && sched.saleType === 'resale' ? { paidInstallments: sched.paidN, paidAmount: sched.paidAmount, remainingInstallmentsCount: sched.remainingCount, remainingYears: sched.remainingYears } : {})
             };
           } else {
