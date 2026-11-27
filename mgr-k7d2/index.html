@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>html:not(.adm-on) .admin-only-btn,html:not(.adm-on) #viewModeToggleBtn{display:none!important}</style>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8"><script>(function(){try{if(sessionStorage.getItem('mgr_unlocked')!=='1'){localStorage.removeItem('abuelhamd_cloud_auth');document.documentElement.classList.add('mgr-locked');}}catch(e){document.documentElement.classList.add('mgr-locked');}})();</script><style>html.mgr-locked body>*:not(#lockScreen):not(#cloudLoginModal){display:none!important}html.mgr-locked #cloudLoginModal{z-index:2147483000!important}#lockScreen{display:none}html.mgr-locked #lockScreen{position:fixed;inset:0;z-index:2147482000;background:#0a1428;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#94a3b8;font:700 14px sans-serif;direction:rtl}html.mgr-locked #lockScreen img{width:88px;height:88px;border-radius:22px;opacity:.9}</style><style>html:not(.adm-on) .admin-only-btn,html:not(.adm-on) #viewModeToggleBtn{display:none!important}</style>
   <meta name="theme-color" content="#0f766e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="./icon-192.png">
@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
-  <title>إدارة سوهاج الجديدة | لوحة التحكم</title>
+  <title>سوهاج الجديدة</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,6 +154,9 @@ html:not(.panel-home) #panelHome { display:none!important }
 html.panel-home #panelBackBtn { display:none!important }
 </style></head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col transition-colors duration-300">
+<div id="lockScreen"><img id="lockLogo" src="icon-192.png" alt=""><div>سوهاج الجديدة</div></div>
+<script>(function(){var n=0,t=null;document.addEventListener('DOMContentLoaded',function(){var l=document.getElementById('lockLogo');if(!l)return;l.addEventListener('click',function(){if(!document.documentElement.classList.contains('mgr-locked'))return;n++;clearTimeout(t);t=setTimeout(function(){n=0},2500);if(n>=7){n=0;try{showCloudLogin()}catch(e){}}});});})();</script>
+
 
   <!-- ==================== 1. شريط التنبيهات العاجلة ==================== -->
   <div id="urgentNewsBanner" class="hidden bg-red-600 text-white text-xs sm:text-sm font-black py-2 px-4 text-center shadow">
@@ -2795,6 +2798,8 @@ html.panel-home #panelBackBtn { display:none!important }
       if (!pw) return;
       try {
         await cloudAuthCall('password', { email: CLOUD_ADMIN_EMAIL, password: pw });
+        try { sessionStorage.setItem('mgr_unlocked', '1'); } catch (_) {}
+        if (document.documentElement.classList.contains('mgr-locked')) { location.reload(); return; }
         closeCloudLogin();
         await cloudPullAll();
         await cloudFlushAll();
@@ -5306,8 +5311,7 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
     try {
-      if (cloudHasSession()) { enterAdminFromCloud(); }
-      else { showCloudLogin(); }
+      if (sessionStorage.getItem('mgr_unlocked') === '1' && cloudHasSession()) { document.title = 'إدارة سوهاج الجديدة'; enterAdminFromCloud(); }
     } catch(_) {}
   }, 500);
 });
