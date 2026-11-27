@@ -4264,11 +4264,19 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
           }
           logAdminAction('تعديل عرض عقاري', propObj.title);
         } else if (editingPendingId) {
-          properties.unshift(propObj);
-          pendingSubmissions = pendingSubmissions.filter(s => s.id !== editingPendingId);
-          safeSaveStorage('abuelhamd_pending', pendingSubmissions);
+          // الطلب يفضل في الواردة بعد التعديل؛ النشر بس بزر "موافقة ونشر" (على السيرفر) — مفيش نقل محلي
+          const pi = pendingSubmissions.findIndex(s => s.id === editingPendingId);
+          if (pi !== -1) {
+            const keep = pendingSubmissions[pi];
+            const upd = Object.assign({}, propObj, { id: keep.id });
+            delete upd.hidden;
+            if (keep.hold) { upd.hold = keep.hold; upd.holdReason = keep.holdReason; }
+            pendingSubmissions[pi] = upd;
+            safeSaveStorage('abuelhamd_pending', pendingSubmissions);
+          }
           editingPendingId = null;
-          logAdminAction('تعديل واعتماد طلب عميل', propObj.title);
+          logAdminAction('تعديل طلب عميل (لسه في الواردة)', propObj.title);
+          try { showToast('اتحفظ التعديل — الطلب لسه في الواردة، اضغط «موافقة ونشر» لما تحب'); } catch (_) {}
         } else {
           properties.unshift(propObj);
           logAdminAction('إضافة عرض عقاري', propObj.title);
@@ -4777,22 +4785,28 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       } finally { window.__approving = false; }
     }
 
-    function unholdPending(id) {
-      const sub = pendingSubmissions.find(s => s.id === id);
-      if (!sub) return;
-      delete sub.hold; delete sub.holdReason;
-      safeSaveStorage('abuelhamd_pending', pendingSubmissions);
-      renderPendingSubmissions();
-      showToast("تم استئناف المراجعة — يمكنك الاعتماد الآن");
+    async function pendingRpc(name, id) {
+      const tok = await cloudToken();
+      if (!tok) throw new Error('مش مسجل دخول للسحابة');
+      const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: cloudHeaders({}, tok), body: JSON.stringify({ p_id: id }) });
+      if (!r.ok) { let m = 'HTTP ' + r.status; try { const j = await r.json(); if (j && j.message) m = j.message; } catch (_) {} throw new Error(m); }
     }
 
-    function rejectPending(id) {
+    async function unholdPending(id) {
+      try {
+        await pendingRpc('admin_unhold_pending', id);
+        await cloudPullAll(); renderPendingSubmissions(); updatePendingBadges();
+        showSaveBanner(true, 'تم استئناف المراجعة ✓ — تقدر تعتمد الآن');
+      } catch (e) { showSaveBanner(false, '⚠ ما اتغيرش — ' + String(e && e.message || e)); }
+    }
+
+    async function rejectPending(id) {
       if (!confirm('تأكيد: حذف الطلب نهائيًا؟ (مش هيتنشر)')) return;
-      pendingSubmissions = pendingSubmissions.filter(s => s.id !== id);
-      safeSaveStorage('abuelhamd_pending', pendingSubmissions);
-      updatePendingBadges();
-      renderPendingSubmissions();
-      showToast("تم حذف الطلب");
+      try {
+        await pendingRpc('admin_reject_pending', id);
+        await cloudPullAll(); renderPendingSubmissions(); updatePendingBadges();
+        showSaveBanner(true, 'تم حذف الطلب ✓');
+      } catch (e) { showSaveBanner(false, '⚠ ما اتحذفش — ' + String(e && e.message || e)); }
     }
 
     // 10. بوابة الإدارة المخفية تحت أيقونة التطبيق (5 ضغطات متتالية)
