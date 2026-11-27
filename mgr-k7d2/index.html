@@ -2509,6 +2509,30 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       }).join('');
     }
 
+
+    function showSaveBanner(ok, msg) {
+      let b = document.getElementById('saveBanner');
+      if (!b) { b = document.createElement('div'); b.id = 'saveBanner'; b.onclick = () => b.remove(); document.body.appendChild(b); }
+      b.className = 'fixed top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-md z-[2147483100] text-white text-sm font-black rounded-2xl px-4 py-3 shadow-2xl border-2 cursor-pointer ' + (ok ? 'bg-emerald-600 border-emerald-800' : 'bg-red-600 border-red-800');
+      b.textContent = msg;
+      clearTimeout(b.__t); if (ok) b.__t = setTimeout(() => { try { b.remove(); } catch (_) {} }, 5000);
+    }
+    // حفظ مفتاح في السحابة ثم إعادة قراءته من العامة والتأكد إنه ظاهر للكل
+    async function cloudSaveVerified(key) {
+      try {
+        const tok = await cloudToken();
+        if (!tok) throw new Error('مش مسجل دخول للسحابة');
+        cloudDirtyAdd(key);
+        await cloudFlushKey(key);
+        const r = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.' + encodeURIComponent(key) + '&select=value&_=' + Date.now(), { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
+        if (!r.ok) throw new Error('تعذر التأكد من السيرفر (' + r.status + ')');
+        const rows = await r.json();
+        const remote = rows && rows[0] && rows[0].value;
+        const local = JSON.parse(localStorage.getItem(key) || 'null');
+        if (JSON.stringify(remote) !== JSON.stringify(local)) throw new Error('السيرفر رجّع نسخة مختلفة');
+        return { ok: true };
+      } catch (e) { return { ok: false, msg: String(e && e.message || e) }; }
+    }
     function renameSection(key) {
       const v = (document.getElementById('lbl-' + key)?.value || '').trim();
       if (!v) { showToast('اكتب اسم القسم'); return; }
@@ -2517,7 +2541,8 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       const okk = safeSaveStorage('abuelhamd_hidden_sections', hiddenSections);
       applyLabelOverrides();
       renderSectionsVisibilityList();
-      showToast(okk ? 'تم حفظ الاسم — بيتأكد من السحابة خلال ثوانٍ' : 'تعذر حفظ الاسم');
+      showToast(okk ? 'جاري حفظ الاسم في السحابة...' : 'تعذر حفظ الاسم');
+      cloudSaveVerified('abuelhamd_hidden_sections').then(v => showSaveBanner(v.ok, v.ok ? 'تم الحفظ في السحابة ✓ — الاسم اتغير للكل' : '⚠ لم يُحفظ في السحابة — ' + v.msg));
     }
     function applyLabelOverrides() {
       const lo = hiddenSections.__labels || {};
@@ -2527,9 +2552,13 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       });
       if (typeof panelRender === 'function') panelRender();
     }
-    function toggleSectionVisibility(key) {
+    async function toggleSectionVisibility(key) {
       hiddenSections[key] = !hiddenSections[key];
       safeSaveStorage('abuelhamd_hidden_sections', hiddenSections);
+      const __sm = MANAGED_SECTIONS_META.find(s => s.key === key);
+      cloudSaveVerified('abuelhamd_hidden_sections').then(v => {
+        showSaveBanner(v.ok, v.ok ? 'تم الحفظ في السحابة ✓ — ' + (hiddenSections[key] ? 'اتخفى' : 'اتظهر') + ' ' + (__sm ? __sm.label : key) + ' للكل' : '⚠ لم يُحفظ في السحابة — ' + v.msg + ' (التغيير على جهازك بس، حاول تاني)');
+      });
       const secMeta = MANAGED_SECTIONS_META.find(s => s.key === key);
       logAdminAction(hiddenSections[key] ? 'إخفاء قسم عن الجمهور' : 'إظهار قسم للجمهور', secMeta ? secMeta.label : key);
       applySectionVisibilityUI();
@@ -2864,11 +2893,13 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       const ts = new Date().toISOString();
       const tok = await cloudToken();
       if (!tok && !cloudCanWrite(key)) { cloudLastError = 'مفيش تسجيل دخول للسحابة على الجهاز ده — سجل دخول من إعدادات الإدارة'; updateCloudSyncBanner(); return true; } // بدون جلسة: سيب العلم متعلّم، هيرفع بعد تسجيل الدخول
-      const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
-        method: 'POST',
+      const __ac = new AbortController(); const __to = setTimeout(() => __ac.abort(), 60000);
+      let res;
+      try { res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
+        method: 'POST', signal: __ac.signal,
         headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }, tok),
         body: '{"key":' + JSON.stringify(key) + ',"value":' + raw + ',"updated_at":' + JSON.stringify(ts) + '}'
-      });
+      }); } catch (e) { cloudLastError = 'الاتصال بالسحابة ضعيف أو اتقطع (' + (e && e.name === 'AbortError' ? 'انتهت المهلة' : 'شبكة') + ')'; throw e; } finally { clearTimeout(__to); }
       if (!res.ok) {
         let msg = 'HTTP ' + res.status;
         try { const j = await res.json(); if (j && j.message) msg = j.message; } catch (_) {}
@@ -2877,7 +2908,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       }
       syncMetaStamp(key, Date.parse(ts));
       if (cloudOverride[key] === raw) delete cloudOverride[key];
-      cloudDirtyDel(key);
+      { const nowRaw = (key in cloudOverride) ? cloudOverride[key] : localStorage.getItem(key); if (nowRaw === raw) cloudDirtyDel(key); else window.__reflush = true; }
       if (cloudDirtyGet().length === 0) {
         if (cloudFailStreak > 0) { try { showToast('✓ اترفعت التعديلات للسحابة'); } catch (_) {} }
         cloudFailStreak = 0; cloudLastError = '';
@@ -2885,21 +2916,21 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       return true;
     }
     let cloudFlushAgain = false;
+    const cloudInflight = {};
     async function cloudFlushAll() {
-      if (cloudFlushing) { cloudFlushAgain = true; return; }
-      cloudFlushing = true;
-      cloudFlushAgain = false;
-      try {
-        await Promise.all(cloudDirtyGet().map(async (key) => {
-          try { await cloudFlushKey(key); }
-          catch (e) {
-            cloudFailStreak++;
-            console.warn('cloud push failed, will retry', key, e);
-            if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('تعذّر الرفع للسحابة حاليًا، هيعيد المحاولة تلقائيًا'); } catch (_) {} }
-          }
-        }));
-      } finally { cloudFlushing = false; updateCloudSyncBanner(); }
-      if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
+      const keys = cloudDirtyGet().filter(k => !cloudInflight[k]);
+      if (!keys.length) { return; }
+      await Promise.all(keys.map(async (key) => {
+        cloudInflight[key] = true;
+        try { await cloudFlushKey(key); }
+        catch (e) {
+          cloudFailStreak++;
+          console.warn('cloud push failed, will retry', key, e);
+          if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('تعذّر الرفع للسحابة حاليًا، هيعيد المحاولة تلقائيًا'); } catch (_) {} }
+        } finally { delete cloudInflight[key]; }
+      }));
+      updateCloudSyncBanner();
+      if (window.__reflush) { window.__reflush = false; return cloudFlushAll(); }
     }
     function cloudPush(key, data) {
       if (CLOUD_SYNC_KEYS.indexOf(key) === -1) return Promise.resolve();
@@ -4717,20 +4748,33 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       openPropertyModal(null, sub);
     }
 
-    function approvePending(id) {
-      const idx = pendingSubmissions.findIndex(s => s.id === id);
-      if (idx === -1) return;
-      if (pendingSubmissions[idx].hold) { showToast('⏸️ الطلب موقوف — بانتظار بيانات من المالك، اضغط "استئناف المراجعة" بعد استكمالها'); return; }
-      { const bad = listingProblems(pendingSubmissions[idx], false); if (bad.length) { showToast('⚠ ما ينفعش الاعتماد: ' + bad.join(' • ') + ' — اضغط تعديل واستكمل البيانات'); return; } }
-      const approved = { ...pendingSubmissions[idx], id: 'prop-' + Date.now(), sold: false, createdAt: Date.now() };
-      properties.unshift(approved);
-      pendingSubmissions.splice(idx, 1);
-      safeSaveStorage('abuelhamd_properties', properties);
-      safeSaveStorage('abuelhamd_pending', pendingSubmissions);
-      logAdminAction('اعتماد طلب عميل', approved.title);
-      updateStats();
-      renderPendingSubmissions();
-      showToast("تم اعتماد ونشر العرض بنجاح");
+    async function approvePending(id) {
+      const sub = pendingSubmissions.find(s => s.id === id);
+      if (!sub) return;
+      if (sub.hold) { showToast('⏸️ الطلب موقوف — بانتظار بيانات من المالك، اضغط "استئناف المراجعة" بعد استكمالها'); return; }
+      { const bad = listingProblems(sub, false); if (bad.length) { showSaveBanner(false, '⚠ ما ينفعش الاعتماد: ' + bad.join(' • ') + ' — اضغط تعديل واستكمل البيانات'); return; } }
+      if (window.__approving) return; window.__approving = true;
+      showSaveBanner(true, 'جاري النشر...');
+      try {
+        const tok = await cloudToken();
+        if (!tok) throw new Error('مش مسجل دخول للسحابة');
+        if (cloudDirtyGet().length) { await cloudFlushAll(); if (cloudDirtyGet().length) throw new Error('فيه تعديلات سابقة لسه ما اترفعتش للسحابة — اتأكد من النت وحاول تاني'); }
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/admin_approve_pending', { method: 'POST', headers: cloudHeaders({}, tok), body: JSON.stringify({ p_id: id }) });
+        if (!r.ok) { let m = 'HTTP ' + r.status; try { const j = await r.json(); if (j && j.message) m = j.message; } catch (_) {} throw new Error(m); }
+        const j = await r.json();
+        const v = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.abuelhamd_properties&select=value&_=' + Date.now(), { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, cache: 'no-store' });
+        const rows = v.ok ? await v.json() : [];
+        const live = !!(rows[0] && Array.isArray(rows[0].value) && rows[0].value.some(p => p && p.id === j.id));
+        if (!live) throw new Error('اتحفظ بس مش ظاهر للجمهور لسه — ما تأكدتش');
+        cloudDirtyDel('abuelhamd_properties'); cloudDirtyDel('abuelhamd_pending');
+        await cloudPullAll();
+        try { logAdminAction('اعتماد طلب عميل', j.title || ''); } catch (_) {}
+        updateStats(); renderPendingSubmissions(); updatePendingBadges();
+        showSaveBanner(true, 'نُشر ✓ — ظاهر دلوقتي للجمهور: ' + (j.title || ''));
+      } catch (e) {
+        showSaveBanner(false, '⚠ ما اتنشرش — ' + String(e && e.message || e) + ' — الطلب لسه موجود عندك في الواردة');
+        try { await cloudPullAll(); renderPendingSubmissions(); updatePendingBadges(); } catch (_) {}
+      } finally { window.__approving = false; }
     }
 
     function unholdPending(id) {
@@ -4743,6 +4787,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
     }
 
     function rejectPending(id) {
+      if (!confirm('تأكيد: حذف الطلب نهائيًا؟ (مش هيتنشر)')) return;
       pendingSubmissions = pendingSubmissions.filter(s => s.id !== id);
       safeSaveStorage('abuelhamd_pending', pendingSubmissions);
       updatePendingBadges();
