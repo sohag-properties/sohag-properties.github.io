@@ -1197,8 +1197,10 @@
             <div id="adminImagesPreview" class="flex flex-wrap gap-2 mt-2"></div>
           </div>
           <div>
-            <label class="block text-xs font-black text-slate-700 mb-1">رابط فيديو معاينة (فيسبوك / يوتيوب / تيك توك)</label>
-            <input type="url" id="propVideoUrl" placeholder="https://..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+            <label class="block text-xs font-black text-slate-700 mb-1">فيديو معاينة العقار — ارفع ملف الفيديو (بيشتغل جوه التطبيق بس، من غير أي روابط خارجية) أو الصق رابط mp4 مباشر</label>
+            <input type="file" id="adminVideoFileInput" accept="video/*" onchange="handleAdminVideoUpload(event)" class="w-full text-xs font-bold file:ml-2 file:rounded-xl file:border-0 file:bg-purple-700 file:text-white file:px-3 file:py-2 file:font-black bg-slate-50 border border-slate-300 rounded-xl cursor-pointer">
+            <div id="adminVideoUploadMsg" class="text-[11px] font-bold mt-1"></div>
+            <input type="url" id="propVideoUrl" placeholder="رابط الفيديو (بيتملى تلقائي بعد الرفع)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold mt-1.5">
           </div>
         </div>
 
@@ -1846,15 +1848,12 @@
       <div class="flex items-center justify-between text-white gap-2">
         <span id="videoPlayerTitle" class="text-xs sm:text-sm font-black text-gold-400 truncate">فيديو معاينة العقار</span>
         <div class="flex items-center gap-2 shrink-0">
-          <a id="videoExternalFallbackLink" href="#" target="_blank" rel="noopener noreferrer" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1">
-            <i class="fa-solid fa-up-right-from-square"></i> فتح خارجيًا
-          </a>
           <button type="button" onclick="closeVideoPlayer()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-xl font-black text-slate-200 flex items-center justify-center cursor-pointer">×</button>
         </div>
       </div>
       <div class="relative bg-black rounded-2xl overflow-hidden w-full aspect-video flex items-center justify-center">
         <video id="internalVideoEl" controls="" playsinline="" class="hidden w-full h-full object-contain bg-black"></video>
-        <iframe id="internalVideoIframe" src="" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen="" class="hidden w-full h-full border-0"></iframe>
+        <iframe id="internalVideoIframe" src="" sandbox="allow-scripts allow-same-origin allow-presentation" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen="" class="hidden w-full h-full border-0"></iframe>
       </div>
     </div>
   </div>
@@ -3793,6 +3792,26 @@
       if (cat === 'malls') { mallRecalc('admin'); }
     }
 
+    async function handleAdminVideoUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const msgEl = document.getElementById('adminVideoUploadMsg');
+      const setMsg = (t, okk) => { msgEl.textContent = t; msgEl.className = 'text-[11px] font-bold mt-1 ' + (okk ? 'text-emerald-700' : 'text-red-700'); };
+      if (file.size > 50 * 1024 * 1024) { setMsg('الملف أكبر من 50 ميجا — قلل جودة الفيديو أو قصّه الأول', false); e.target.value = ''; return; }
+      const tok = await cloudToken();
+      if (!tok) { setMsg('سجل دخول السحابة الأول', false); showCloudLogin(); e.target.value = ''; return; }
+      const ext = (file.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp4';
+      const name = 'video-' + Date.now() + '.' + ext;
+      setMsg('جاري رفع الفيديو... استنى لحد ما يخلص', true);
+      try {
+        const r = await fetch(SUPABASE_URL + '/storage/v1/object/videos/' + name, { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': file.type || 'video/mp4', 'x-upsert': 'true' }, body: file });
+        if (!r.ok) throw new Error('upload failed ' + r.status);
+        document.getElementById('propVideoUrl').value = SUPABASE_URL + '/storage/v1/object/public/videos/' + name;
+        setMsg('تم رفع الفيديو ✓ هيشتغل جوه التطبيق من غير أي روابط خارجية — احفظ العرض عشان يتنشر', true);
+      } catch (err2) { setMsg('فشل رفع الفيديو — حاول تاني', false); }
+      e.target.value = '';
+    }
+
     function updateOppModalStatus(item) {
       const chk = document.getElementById('propOpportunity');
       const st = document.getElementById('oppStatusText');
@@ -4574,7 +4593,7 @@
         return { type: 'video', src: url };
       }
       const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
-      if (ytMatch) return { type: 'iframe', src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0` };
+      if (ytMatch) return { type: 'iframe', src: `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0&modestbranding=1` };
       const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
       if (driveMatch) return { type: 'iframe', src: `https://drive.google.com/file/d/${driveMatch[1]}/preview` };
       const ttMatch = url.match(/tiktok\.com\/(?:@[^\/]+\/video|embed(?:\/v2)?|v)\/(\d{8,})/i);
@@ -4591,10 +4610,9 @@
       if (!item || !item.videoUrl) return;
       const resolved = resolveEmbedVideo(item.videoUrl);
       if (!resolved) return;
-      if (resolved.type === 'external') { window.open(resolved.src, '_blank', 'noopener'); return; }
+      if (resolved.type === 'external') { showToast('الفيديو ده مش بيشتغل جوه التطبيق — الأفضل يرفعه المكتب كملف'); return; }
 
       document.getElementById('videoPlayerTitle').textContent = `فيديو: ${item.title}`;
-      document.getElementById('videoExternalFallbackLink').href = item.videoUrl;
 
       const videoEl = document.getElementById('internalVideoEl');
       const iframeEl = document.getElementById('internalVideoIframe');
