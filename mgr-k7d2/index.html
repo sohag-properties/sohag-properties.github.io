@@ -2823,7 +2823,7 @@ html:not(.stats-open) #adminStatsStrip { display:none!important }
           cloudAssignLocal(r.key, r.value); syncMetaStamp(r.key, Date.parse(r.updated_at) || Date.now());
         }
       } catch (_) {}
-      window.__propsLoading = false; try { handleSearchFilter(); } catch (_) {}
+      window.__propsLoading = false; window.__cloudPulled = true; try { handleSearchFilter(); } catch (_) {}
     }
     async function cloudSubmitPending(item) {
       try {
@@ -4791,6 +4791,7 @@ html:not(.stats-open) #adminStatsStrip { display:none!important }
       else if (new URLSearchParams(location.search).get('go') === 'pending') panelGo('pending');
       else if (new URLSearchParams(location.search).get('go') === 'chats') panelGo('chats');
       else handleSearchFilter();
+      setTimeout(() => { try { if (window.adminCountOpen) window.adminCountOpen(); } catch (_) {} }, 300);
       showToast('أهلاً بك ' + currentAdminUser.name);
     }
 
@@ -5624,8 +5625,15 @@ window.addEventListener('DOMContentLoaded', function(){
       const t = document.getElementById('panelTiles'); if (!t) return;
       const list = (typeof properties !== 'undefined' && properties) || [];
       const hid = list.filter(p => p.hidden).length, sold = list.filter(p => p.sold).length, opp = list.filter(p => typeof oppActive === 'function' && oppActive(p)).length;
-      const pend = (document.getElementById('headerPendingCountBadge') || {}).textContent || '0';
-      const ac = window.__adminCounts || null;
+      let pend = (document.getElementById('headerPendingCountBadge') || {}).textContent || '0';
+      try {
+        const cp = sessionStorage.getItem('mgr_last_pend');
+        if (isAdminMode && (window.__cloudPulled || pend !== '0')) sessionStorage.setItem('mgr_last_pend', pend);
+        else if (cp !== null) pend = cp;
+      } catch (_) {}
+      let ac = window.__adminCounts || null;
+      try { if (ac) sessionStorage.setItem('mgr_last_ac', JSON.stringify(ac)); else { const sa = sessionStorage.getItem('mgr_last_ac'); if (sa) ac = JSON.parse(sa); } } catch (_) {}
+      const pushOn = (typeof Notification !== 'undefined' && Notification.permission === 'granted' && localStorage.getItem('mgr_push_on') === '1');
       const c = document.getElementById('panelCounts');
       if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...', "panelGo('chats')"], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend, "panelGo('pending')"]].map(x => (x[2] ? '<button type="button" onclick="' + x[2] + '" class="bg-amber-600 text-white rounded-xl px-3 py-1.5 cursor-pointer">' + x[0] + ': <b>' + x[1] + '</b> ◀</button>' : '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>')).join('');
       const tiles = [
@@ -5638,7 +5646,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['fa-shop', 'المولات', "panelAct(openMallsManager)", 'bg-navy-700'],
         ['fa-user-shield', 'المشرفون', "panelAct(openAdminsManager)", 'bg-amber-700'],
         ['fa-cloud', 'السحابة', "panelAct(showCloudLogin)", 'bg-sky-800'],
-        ['fa-bell', 'إشعارات الإدارة على موبايلي', "panelAct(adminPushSetup)", 'bg-emerald-700'],
+        ['fa-bell', pushOn ? 'إشعارات الإدارة: شغالة ✓' : 'إشعارات الإدارة: اضغط للتشغيل', "panelAct(adminPushSetup)", 'bg-emerald-700'],
         ['fa-bullhorn', 'رسالة عاجلة', "panelAct(openUrgentModal)", 'bg-red-700'],
         ['fa-key', 'تغيير كلمة السر', "panelAct(openPwdChange)", 'bg-slate-700'],
         ['fa-download', 'نسخة احتياطية', "panelAct(exportBackup)", 'bg-slate-600']
@@ -5722,7 +5730,7 @@ window.adminPushSetup=async function(){
   var p=await Notification.requestPermission();if(p!=='granted'){alert('لازم تسمح بالإشعارات علشان توصلك. اضغط الزر تاني واختار "السماح".');return;}
   var r=await navigator.serviceWorker.ready;var sub=await r.pushManager.getSubscription();
   if(!sub)sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(VK)});
-  await reg(sub);localStorage.setItem('mgr_push_on','1');
+  await reg(sub);localStorage.setItem('mgr_push_on','1');try{panelRender()}catch(_){}
   var tok=await window.cloudGetToken();
   var t=await fetch(SUPABASE_URL+'/functions/v1/admin-notify',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({kind:'test'})});
   var o=await t.json().catch(function(){return{}});
