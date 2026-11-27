@@ -450,7 +450,27 @@ html.panel-home #panelBackBtn { display:none!important }
 
 
   <!-- ==================== 3. المحتوى الرئيسي ==================== -->
-  <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
+  <div id="urgentBanner" class="hidden fixed top-0 inset-x-0 z-[120] bg-red-700 text-white px-4 py-3 shadow-2xl border-b-4 border-red-900" dir="rtl">
+  <div class="max-w-3xl mx-auto flex items-start gap-3"><i class="fa-solid fa-triangle-exclamation text-2xl mt-0.5"></i>
+    <div class="flex-1"><div class="text-[11px] font-black opacity-90">رسالة عاجلة</div><div id="urgentBannerText" class="text-sm font-black leading-relaxed whitespace-pre-line"></div></div>
+    <button type="button" onclick="dismissUrgent()" class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-xs font-black cursor-pointer">حسنًا</button></div>
+</div>
+<div id="urgentModal" class="fixed inset-0 bg-black/75 hidden items-center justify-center z-[130] p-4" onclick="if(event.target===this)closeUrgentModal()">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 space-y-3">
+    <div class="flex items-center justify-between"><h3 class="text-base font-black text-red-700"><i class="fa-solid fa-bullhorn"></i> رسالة عاجلة لكل المستخدمين</h3><button type="button" onclick="closeUrgentModal()" class="text-slate-400 text-xl font-black cursor-pointer">×</button></div>
+    <div id="urgentStep1" class="space-y-3">
+      <textarea id="urgentText" maxlength="200" rows="4" placeholder="اكتب الرسالة (حتى 200 حرف)" class="w-full p-3 border-2 border-slate-300 rounded-xl text-sm font-bold"></textarea>
+      <button type="button" onclick="urgentPreview()" class="w-full bg-red-600 text-white font-black py-2.5 rounded-xl text-sm cursor-pointer">معاينة</button>
+    </div>
+    <div id="urgentStep2" class="hidden space-y-3">
+      <div class="bg-red-700 text-white rounded-xl p-3 text-sm font-black whitespace-pre-line" id="urgentPrev"></div>
+      <div class="text-xs font-black text-slate-700">هتتبعت فورًا كإشعار لكل المستخدمين وتظهر جوه التطبيق للي فاتحه. متأكد؟</div>
+      <div class="flex gap-2"><button type="button" id="urgentSendBtn" onclick="urgentSend()" class="flex-1 bg-red-700 text-white font-black py-2.5 rounded-xl text-sm cursor-pointer">أيوه، ابعت للجميع</button><button type="button" onclick="urgentBack()" class="px-4 bg-slate-200 font-black rounded-xl text-sm cursor-pointer">رجوع</button></div>
+    </div>
+    <div id="urgentMsg" class="text-xs font-black"></div>
+  </div>
+</div>
+<main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
 
     <section id="panelHome" class="space-y-4">
       <div class="bg-navy-900 text-white p-4 rounded-2xl border border-gold-500/40">
@@ -5602,6 +5622,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['fa-shop', 'المولات', "panelAct(openMallsManager)", 'bg-navy-700'],
         ['fa-user-shield', 'المشرفون', "panelAct(openAdminsManager)", 'bg-amber-700'],
         ['fa-cloud', 'السحابة', "panelAct(showCloudLogin)", 'bg-sky-800'],
+        ['fa-bullhorn', 'رسالة عاجلة', "panelAct(openUrgentModal)", 'bg-red-700'],
         ['fa-key', 'تغيير كلمة السر', "panelAct(openPwdChange)", 'bg-slate-700'],
         ['fa-download', 'نسخة احتياطية', "panelAct(exportBackup)", 'bg-slate-600']
       ];
@@ -5611,5 +5632,62 @@ window.addEventListener('DOMContentLoaded', function(){
     }
     setInterval(() => { if (document.documentElement.classList.contains('panel-home')) panelRender(); }, 5000);
     window.addEventListener('load', () => { setTimeout(() => { applyLabelOverrides(); panelRender(); }, 1500); });
+</script>
+<script>
+    // ==================== رسالة عاجلة: عرض مباشر داخل التطبيق ====================
+    var __urgentCur = null;
+    async function pollUrgent() {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_latest_urgent', { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: '{}' });
+        if (!r.ok) return;
+        const m = await r.json();
+        if (!m || !m.id) return;
+        let seen = 0; try { seen = Number(localStorage.getItem('sohag_urgent_seen') || 0); } catch (_) {}
+        if (m.id <= seen) return;
+        __urgentCur = m.id;
+        document.getElementById('urgentBannerText').textContent = m.body;
+        document.getElementById('urgentBanner').classList.remove('hidden');
+        try { playListingChime(); } catch (_) {}
+      } catch (_) {}
+    }
+    function dismissUrgent() {
+      try { if (__urgentCur) localStorage.setItem('sohag_urgent_seen', String(__urgentCur)); } catch (_) {}
+      document.getElementById('urgentBanner').classList.add('hidden');
+    }
+    setInterval(pollUrgent, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pollUrgent(); });
+    window.addEventListener('load', () => setTimeout(pollUrgent, 2500));
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { pollUrgent(); });
+</script>
+<script>
+    var __urgentLockUntil = 0;
+    function openUrgentModal() { const m = document.getElementById('urgentModal'); document.getElementById('urgentMsg').textContent = ''; urgentBack(); m.classList.remove('hidden'); m.classList.add('flex'); }
+    function closeUrgentModal() { const m = document.getElementById('urgentModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
+    function urgentBack() { document.getElementById('urgentStep1').classList.remove('hidden'); document.getElementById('urgentStep2').classList.add('hidden'); }
+    function urgentPreview() {
+      const t = document.getElementById('urgentText').value.trim();
+      const msg = document.getElementById('urgentMsg');
+      if (t.length < 3) { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'اكتب الرسالة الأول'; return; }
+      msg.textContent = ''; document.getElementById('urgentPrev').textContent = t;
+      document.getElementById('urgentStep1').classList.add('hidden'); document.getElementById('urgentStep2').classList.remove('hidden');
+    }
+    async function urgentSend(dry) {
+      const msg = document.getElementById('urgentMsg'), btn = document.getElementById('urgentSendBtn');
+      if (Date.now() < __urgentLockUntil) { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'استنى دقيقة قبل رسالة تانية'; return; }
+      const t = document.getElementById('urgentText').value.trim();
+      btn.disabled = true; msg.className = 'text-xs font-black text-slate-600'; msg.textContent = 'جاري الإرسال...';
+      try {
+        const tok = await cloudToken();
+        if (!tok) { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'سجل دخول السحابة الأول'; showCloudLogin(); return; }
+        const r = await fetch(SUPABASE_URL + '/functions/v1/urgent-message', { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, dry_run: dry === true }) });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.ok) {
+          if (d.dry_run) { msg.className = 'text-xs font-black text-emerald-700'; msg.textContent = 'تجربة ناجحة: كانت هتتبعت لـ ' + d.would_send_to + ' جهاز (لم يُرسل شيء)'; }
+          else { __urgentLockUntil = Date.now() + 60000; msg.className = 'text-xs font-black text-emerald-700'; msg.textContent = '✓ اتبعتت: ' + d.sent + ' إشعار من ' + d.subs + ' جهاز'; document.getElementById('urgentText').value = ''; urgentBack(); }
+        } else if (d.err === 'rate_limited') { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'تم إرسال رسالة من أقل من دقيقة — استنى'; }
+        else { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'فشل الإرسال — لم يُرسل شيء، حاول تاني'; }
+      } catch (e) { msg.className = 'text-xs font-black text-red-600'; msg.textContent = 'خطأ في الاتصال — لم يُرسل شيء'; }
+      finally { btn.disabled = false; }
+    }
 </script>
 </body></html>

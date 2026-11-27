@@ -437,7 +437,12 @@
 
 
   <!-- ==================== 3. المحتوى الرئيسي ==================== -->
-  <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
+  <div id="urgentBanner" class="hidden fixed top-0 inset-x-0 z-[120] bg-red-700 text-white px-4 py-3 shadow-2xl border-b-4 border-red-900" dir="rtl">
+  <div class="max-w-3xl mx-auto flex items-start gap-3"><i class="fa-solid fa-triangle-exclamation text-2xl mt-0.5"></i>
+    <div class="flex-1"><div class="text-[11px] font-black opacity-90">رسالة عاجلة</div><div id="urgentBannerText" class="text-sm font-black leading-relaxed whitespace-pre-line"></div></div>
+    <button type="button" onclick="dismissUrgent()" class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-xs font-black cursor-pointer">حسنًا</button></div>
+</div>
+<main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 flex-1 space-y-4">
 
     <!-- قائمة الإحصائيات المنسدلة والمرنة (مغلقة افتراضياً لعدم حجب الشاشة) -->
     <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -5469,4 +5474,30 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     }
 </script>
 
+<script>
+    // ==================== رسالة عاجلة: عرض مباشر داخل التطبيق ====================
+    var __urgentCur = null;
+    async function pollUrgent() {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_latest_urgent', { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: '{}' });
+        if (!r.ok) return;
+        const m = await r.json();
+        if (!m || !m.id) return;
+        let seen = 0; try { seen = Number(localStorage.getItem('sohag_urgent_seen') || 0); } catch (_) {}
+        if (m.id <= seen) return;
+        __urgentCur = m.id;
+        document.getElementById('urgentBannerText').textContent = m.body;
+        document.getElementById('urgentBanner').classList.remove('hidden');
+        try { playListingChime(); } catch (_) {}
+      } catch (_) {}
+    }
+    function dismissUrgent() {
+      try { if (__urgentCur) localStorage.setItem('sohag_urgent_seen', String(__urgentCur)); } catch (_) {}
+      document.getElementById('urgentBanner').classList.add('hidden');
+    }
+    setInterval(pollUrgent, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) pollUrgent(); });
+    window.addEventListener('load', () => setTimeout(pollUrgent, 2500));
+    if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { pollUrgent(); });
+</script>
 </body></html>
