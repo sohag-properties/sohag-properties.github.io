@@ -152,6 +152,8 @@ html.panel-mode button[onclick="openClientSubmitModal()"], html.panel-mode butto
 html.panel-home main > section:not(#panelHome) { display:none!important }
 html:not(.panel-home) #panelHome { display:none!important }
 html.panel-home #panelBackBtn { display:none!important }
+html.panel-home header > div:first-child > div:nth-child(2) > *:not(#viewModeToggleBtn) { display:none!important }
+html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #flexMenuDrawer { display:none!important }
 </style></head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col transition-colors duration-300">
 <div id="lockScreen"><img id="lockLogo" src="icon-192.png" alt=""><div>سوهاج الجديدة</div></div>
@@ -3220,6 +3222,7 @@ html.panel-home #panelBackBtn { display:none!important }
     }
 
     function switchTab(tab) {
+      if (document.documentElement.classList.contains('panel-home')) { document.documentElement.classList.remove('panel-home'); try { window.scrollTo(0, 0); } catch (_) {} }
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-gold-500', 'text-navy-950');
@@ -4686,6 +4689,10 @@ html.panel-home #panelBackBtn { display:none!important }
             <span class="bg-red-600 text-white px-2.5 py-0.5 rounded-md">${sub.secretNumber || 'غير مسجل'}</span>
           </div>
           <div class="text-sm font-black text-navy-900">${sub.title}</div>
+          ${(sub.images && sub.images.length) ? `<div class="flex gap-2 overflow-x-auto">${sub.images.map(u => `<img src="${u}" class="h-28 w-28 object-cover rounded-xl border border-slate-300 flex-none" onclick="window.open(this.src)">`).join('')}</div>` : '<div class="text-xs text-slate-500">بدون صور</div>'}
+          ${sub.ownerName ? `<div class="text-xs font-bold text-slate-700">الاسم: ${sub.ownerName}</div>` : ''}
+          ${sub.subcategory ? `<div class="text-xs font-bold text-slate-700">النوع: ${sub.subcategory}</div>` : ''}
+          ${sub.compoundDetails ? `<div class="text-xs text-slate-700 bg-slate-50 rounded-xl p-2 border border-slate-200">${Object.entries(sub.compoundDetails).filter(([k,v])=>v).map(([k,v])=>k+': '+v).join(' • ')}</div>` : ''}
           <div class="text-xs font-bold text-slate-700">المالك والهاتف: <span class="text-red-700 font-black">${sub.ownerPhone}</span></div>
           <div class="text-xs font-bold text-emerald-700">السعر المطلوب: ${Number(sub.totalPrice).toLocaleString('ar-EG')} ج.م • المساحة: ${sub.area} م²</div>
           <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">${sub.notes}</p>
@@ -5616,7 +5623,7 @@ window.addEventListener('DOMContentLoaded', function(){
       const pend = (document.getElementById('headerPendingCountBadge') || {}).textContent || '0';
       const ac = window.__adminCounts || null;
       const c = document.getElementById('panelCounts');
-      if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...'], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend]].map(x => '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>').join('');
+      if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...', "panelGo('chats')"], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend, "panelGo('pending')"]].map(x => (x[2] ? '<button type="button" onclick="' + x[2] + '" class="bg-amber-600 text-white rounded-xl px-3 py-1.5 cursor-pointer">' + x[0] + ': <b>' + x[1] + '</b> ◀</button>' : '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>')).join('');
       const tiles = [
         ['fa-plus', 'إضافة عقار', "panelAct(openPropertyModal)", 'bg-emerald-600'],
         ['fa-list', 'كل العقارات', "panelGo('latest')", 'bg-navy-800'],
