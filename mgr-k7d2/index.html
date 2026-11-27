@@ -201,6 +201,11 @@
           <span>أضف عقارك للبيع</span>
         </button>
 
+        <button type="button" onclick="openDemandAlertModal()" title="فعّل تنبيه عند نزول عرض مطابق لطلبك" class="bg-navy-800 hover:bg-navy-700 border border-gold-500/50 text-gold-400 text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer">
+          <i class="fa-solid fa-bell"></i>
+          <span>نبّهني</span>
+        </button>
+
         <!-- أيقونة طلبات العملاء (تقع في لوحة التحكم للإدارة فقط ومخفية عن العام) -->
         <button type="button" onclick="switchTab('pending')" title="طلبات وعقارات العملاء الواردة" class="admin-only-btn bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/60 text-amber-300 text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer relative">
           <i class="fa-solid fa-inbox text-gold-400"></i>
@@ -310,6 +315,9 @@
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1">
           <button type="button" onclick="switchTab('opportunity')" id="tab-opportunity" class="tab-btn opp-blink bg-red-600 text-white px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition font-black">
             <i class="fa-solid fa-bolt"></i> فرصة
+          </button>
+          <button type="button" onclick="switchTab('calculator')" id="tab-calculator" class="tab-btn text-slate-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition font-black">
+            <i class="fa-solid fa-calculator"></i> حاسبة الميزانية
           </button>
           <button type="button" onclick="switchTab('latest')" id="tab-latest" class="tab-btn px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
             <i class="fa-solid fa-fire"></i> أحدث العروض
@@ -494,6 +502,29 @@
         <p class="text-[11px] text-slate-300 mt-1">أهم المعالم والخدمات الموجودة حالياً أو المخطط لها بالمدينة. تُضاف المعالم تباعاً.</p>
       </div>
       <div id="landmarksList" class="space-y-4"></div>
+    </section>
+
+    <section id="calculatorSection" class="hidden space-y-4">
+      <div class="bg-navy-900 text-white p-4 rounded-2xl border border-gold-500/40 space-y-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-gold-400 flex items-center gap-2">
+            <i class="fa-solid fa-calculator"></i> حاسبة الميزانية
+          </h2>
+          <p class="text-xs text-slate-300 mt-0.5">اكتب اللي معاك وهنعرضلك العروض المتاحة اللي تناسب ميزانيتك مع المطلوب الآن والقسط</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-black text-gold-300 mb-1">معاك كام؟ (ج.م)</label>
+            <input type="number" id="calcBudget" min="0" oninput="renderCalculator()" placeholder="مثال: 500000" class="w-full px-3 py-2.5 bg-slate-900 text-white border border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-gold-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-black text-gold-300 mb-1">المقدم اللي تقدر تدفعه (اختياري)</label>
+            <input type="number" id="calcDown" min="0" oninput="renderCalculator()" placeholder="مثال: 200000" class="w-full px-3 py-2.5 bg-slate-900 text-white border border-slate-700 rounded-xl text-xs font-bold focus:outline-none focus:border-gold-500">
+          </div>
+        </div>
+        <div id="calcSummary"></div>
+      </div>
+      <div id="calcGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </section>
 
     <section id="newsSection" class="hidden space-y-4">
@@ -1865,6 +1896,35 @@
     </div>
   </div>
 
+  <!-- ==================== 11.6 نافذة تنبيهات الطلب (نبّهني) ==================== -->
+  <div id="demandAlertModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-[95] p-3 sm:p-4" onclick="if(event.target===this)closeDemandAlertModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-navy-900 flex items-center gap-2"><i class="fa-solid fa-bell text-gold-500"></i> نبّهني عند عرض مطابق</h3>
+        <button type="button" onclick="closeDemandAlertModal()" class="text-slate-400 hover:text-slate-700 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <p class="text-xs text-slate-500 font-bold leading-relaxed">حدد اللي بتدور عليه وهنبعتلك إشعار على جهازك أول ما ينزل عرض مطابق. من غير اسم ولا رقم تليفون — التنبيه مرتبط بجهازك فقط.</p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-black text-slate-600 mb-1">نوع العقار</label>
+          <select id="alertCategory" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-600 mb-1">المنطقة / المجاورة</label>
+          <select id="alertLocation" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-600 mb-1">أقصى سعر إجمالي (ج.م) — اختياري</label>
+          <input type="number" id="alertBudget" min="0" placeholder="مثال: 1000000" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
+        </div>
+      </div>
+      <button type="button" id="alertSaveBtn" onclick="saveDemandAlert()" class="w-full bg-gradient-to-l from-gold-500 to-gold-400 hover:from-gold-400 hover:to-gold-300 text-navy-950 text-sm font-black px-4 py-3 rounded-xl shadow-md transition cursor-pointer disabled:opacity-50">
+        <i class="fa-solid fa-bell"></i> فعّل التنبيه
+      </button>
+      <div id="myAlertsList"></div>
+    </div>
+  </div>
+
   <!-- ==================== 11.5 نافذة عارض الفيديو الداخلي ==================== -->
   <div id="videoPlayerModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-3 sm:p-4" onclick="if(event.target===this)closeVideoPlayer()">
     <div class="bg-navy-950 rounded-3xl max-w-4xl w-full p-3 sm:p-4 border border-slate-700 space-y-3">
@@ -3068,6 +3128,7 @@
       const lmSec = document.getElementById('landmarksSection');
       const pendSec = document.getElementById('pendingSection');
       const chatsSec = document.getElementById('chatsSection');
+      const calcSec = document.getElementById('calculatorSection');
 
       propSec.classList.add('hidden');
       filterSec.classList.add('hidden');
@@ -3076,6 +3137,7 @@
       if (lmSec) lmSec.classList.add('hidden');
       pendSec.classList.add('hidden');
       if (chatsSec) chatsSec.classList.add('hidden');
+      if (calcSec) calcSec.classList.add('hidden');
 
       if (tab === 'news') {
         newsSec.classList.remove('hidden');
@@ -3102,6 +3164,11 @@
         if (!isAdminMode) { openChatsAdminEntry(); return; }
         if (chatsSec) chatsSec.classList.remove('hidden');
         if (typeof renderChatsAdmin === 'function') renderChatsAdmin(true);
+        return;
+      }
+      if (tab === 'calculator') {
+        if (calcSec) calcSec.classList.remove('hidden');
+        renderCalculator();
         return;
       }
 
@@ -3146,7 +3213,7 @@
 
       if (currentTab === 'opportunity') {
         list = list.filter(p => oppActive(p));
-      } else if (currentTab !== 'latest' && currentTab !== 'news' && currentTab !== 'citymap' && currentTab !== 'landmarks' && currentTab !== 'pending') {
+      } else if (currentTab !== 'latest' && currentTab !== 'news' && currentTab !== 'citymap' && currentTab !== 'landmarks' && currentTab !== 'pending' && currentTab !== 'calculator') {
         list = list.filter(p => p.category === currentTab);
       }
 
@@ -5158,7 +5225,8 @@ window.addEventListener('DOMContentLoaded', function(){
     adminsManagerModal: 'closeAdminsManager',
     newsModal: 'closeNewsModal',
     imageGalleryModal: 'closeImageGallery',
-    videoPlayerModal: 'closeVideoPlayer'
+    videoPlayerModal: 'closeVideoPlayer',
+    demandAlertModal: 'closeDemandAlertModal'
   };
   function modalVisible(m){ return m && !m.classList.contains('hidden'); }
   var obs = new MutationObserver(function(records){
@@ -5244,6 +5312,187 @@ window.addEventListener('DOMContentLoaded', function(){
     m.classList.remove('hidden');
   }
 })();
+</script>
+
+<script>
+    // ==================== حاسبة الميزانية + تنبيهات الطلب ====================
+    function getListingUpfront(p) {
+      try {
+        if (p.apartmentPaymentDelivery && Number(p.apartmentPaymentDelivery.downPayment) > 0) return Number(p.apartmentPaymentDelivery.downPayment);
+        if (p.compoundDetails && Number(p.compoundDetails.downPayment) > 0) return Number(p.compoundDetails.downPayment);
+        if (p.mallDetails) {
+          const m = p.mallDetails;
+          if (Number(m.cashNow) > 0) return Number(m.cashNow);
+          if (Number(m.downPayment) > 0) return Number(m.downPayment);
+        }
+        if (p.installments4Info && Number(p.totalPrice) > 0) return Math.ceil(Number(p.totalPrice) / 4);
+        if (Number(p.totalPrice) > 0) return Number(p.totalPrice);
+      } catch (_) {}
+      return null;
+    }
+    function getListingInstallmentText(p) {
+      try {
+        if (p.compoundDetails && Number(p.compoundDetails.instValue) > 0) {
+          return 'قسط ' + Number(p.compoundDetails.instValue).toLocaleString('ar-EG') + ' ج.م' + (p.compoundDetails.freq ? ' ' + p.compoundDetails.freq : '');
+        }
+        if (p.apartmentPaymentDelivery && Number(p.totalPrice) > 0 && Number(p.apartmentPaymentDelivery.years) > 0) {
+          const ap = p.apartmentPaymentDelivery;
+          const rs = computeResaleSchedule(Number(p.totalPrice), Number(ap.downPayment) || 0, Number(ap.years) || 0, ap.freq || 'سنوي', 0);
+          if (rs.singleVal > 0) return 'قسط ' + rs.singleVal.toLocaleString('ar-EG') + ' ج.م' + (ap.freq ? ' ' + ap.freq : '');
+        }
+        if (p.installments4Info && Number(p.totalPrice) > 0) {
+          return 'قسط ' + Math.ceil(Number(p.totalPrice) / 4).toLocaleString('ar-EG') + ' ج.م سنوي';
+        }
+      } catch (_) {}
+      return '';
+    }
+    function renderCalculator() {
+      const budget = parseFloat(document.getElementById('calcBudget')?.value) || 0;
+      const down = parseFloat(document.getElementById('calcDown')?.value) || 0;
+      const eff = Math.max(budget, down);
+      const grid = document.getElementById('calcGrid');
+      const sumEl = document.getElementById('calcSummary');
+      if (!grid) return;
+      if (eff <= 0) {
+        grid.innerHTML = '';
+        if (sumEl) sumEl.innerHTML = '<div class="text-xs text-slate-300 font-bold">اكتب ميزانيتك فوق وهتظهرلك العروض المناسبة هنا 👇</div>';
+        return;
+      }
+      const list = properties
+        .filter(p => !p.hidden && !p.sold && !hiddenSections[p.category])
+        .map(p => ({ p, up: getListingUpfront(p) }))
+        .filter(x => x.up !== null && (x.up <= eff || (Number(x.p.totalPrice) > 0 && Number(x.p.totalPrice) <= eff)));
+      list.sort((a, b) => a.up - b.up);
+      if (sumEl) sumEl.innerHTML = list.length
+        ? '<div class="text-xs font-black text-gold-300">وجدنا ' + list.length.toLocaleString('ar-EG') + ' عرض يناسب ميزانيتك (المطلوب الآن ≤ ' + eff.toLocaleString('ar-EG') + ' ج.م)</div>'
+        : '<div class="text-xs font-black text-slate-300">لا توجد عروض تناسب هذه الميزانية حالياً — جرّب زر «نبّهني» فوق ليصلك إشعار أول ما ينزل عرض مناسب 🔔</div>';
+      grid.innerHTML = list.map(x => {
+        const inst = getListingInstallmentText(x.p);
+        const strip = '<div class="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-2 text-[11px] font-black text-emerald-800">المطلوب الآن: ' + x.up.toLocaleString('ar-EG') + ' ج.م' + (inst ? ' • ' + inst : '') + '</div>';
+        return '<div>' + strip + createPropertyCardHTML(x.p) + '</div>';
+      }).join('');
+    }
+
+    // ==================== تنبيهات الطلب (نبّهني) ====================
+    function escAlertHtml(t) {
+      return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function openDemandAlertModal() {
+      const m = document.getElementById('demandAlertModal');
+      if (!m) return;
+      const catSel = document.getElementById('alertCategory');
+      if (catSel && !catSel.dataset.filled) {
+        const catalog = getCatalog();
+        let opts = '<option value="">كل الأنواع</option>';
+        Object.keys(catalog).forEach(k => { opts += '<option value="' + escAlertHtml(k) + '">' + escAlertHtml(getCategoryLabel(k)) + '</option>'; });
+        catSel.innerHTML = opts;
+        catSel.dataset.filled = '1';
+      }
+      const locSel = document.getElementById('alertLocation');
+      if (locSel && !locSel.dataset.filled) {
+        const catalog = getCatalog();
+        const set = new Set();
+        Object.keys(catalog).forEach(c => Object.keys(catalog[c]).forEach(s => (catalog[c][s] || []).forEach(l => set.add(l))));
+        let opts = '<option value="">كل المناطق</option>';
+        Array.from(set).forEach(l => { opts += '<option value="' + escAlertHtml(l) + '">' + escAlertHtml(l) + '</option>'; });
+        locSel.innerHTML = opts;
+        locSel.dataset.filled = '1';
+      }
+      renderMyAlerts();
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+    function closeDemandAlertModal() {
+      const m = document.getElementById('demandAlertModal');
+      if (!m) return;
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+    async function saveDemandAlert() {
+      const btn = document.getElementById('alertSaveBtn');
+      if (btn) btn.disabled = true;
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+          showToast('المتصفح ده مش بيدعم الإشعارات'); return;
+        }
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { showToast('لازم تسمح بالإشعارات عشان نقدر ننبهك 🔔'); return; }
+        const r = await syncPushSubscription(true);
+        if (r !== 'ok') { showToast('تعذر تفعيل الإشعارات على هذا الجهاز'); return; }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) { showToast('تعذر تفعيل الإشعارات على هذا الجهاز'); return; }
+        const endpoint = sub.endpoint;
+        const category = document.getElementById('alertCategory').value || null;
+        const location = document.getElementById('alertLocation').value || null;
+        const budgetV = parseFloat(document.getElementById('alertBudget').value);
+        const max_budget = (isFinite(budgetV) && budgetV > 0) ? Math.round(budgetV) : null;
+        if (!category && !location && !max_budget) { showToast('حدد على الأقل نوع العقار أو المنطقة أو الميزانية'); return; }
+        const resp = await fetch(SUPABASE_URL + '/rest/v1/demand_alerts', {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+          body: JSON.stringify({ endpoint, category, location, max_budget })
+        });
+        if (!resp.ok) { showToast('حصل خطأ أثناء الحفظ — جرّب تاني'); return; }
+        const rows = await resp.json();
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        try {
+          const mine = JSON.parse(localStorage.getItem('abuelhamd_my_alerts') || '[]');
+          mine.push({ id: row.id, category, location, max_budget });
+          localStorage.setItem('abuelhamd_my_alerts', JSON.stringify(mine));
+          localStorage.setItem('abuelhamd_alert_endpoint', endpoint);
+        } catch (_) {}
+        document.getElementById('alertBudget').value = '';
+        showToast('✅ تم تفعيل التنبيه — هيوصلك إشعار أول ما ينزل عرض مطابق');
+        renderMyAlerts();
+      } catch (e) {
+        showToast('حصل خطأ أثناء الحفظ — جرّب تاني');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+    function alertLabelOf(a) {
+      const parts = [];
+      parts.push(a.category ? getCategoryLabel(a.category) : 'كل الأنواع');
+      parts.push(a.location ? a.location : 'كل المناطق');
+      if (a.max_budget) parts.push('حتى ' + Number(a.max_budget).toLocaleString('ar-EG') + ' ج.م');
+      return parts.map(escAlertHtml).join(' • ');
+    }
+    function renderMyAlerts() {
+      const box = document.getElementById('myAlertsList');
+      if (!box) return;
+      let mine = [];
+      try { mine = JSON.parse(localStorage.getItem('abuelhamd_my_alerts') || '[]'); } catch (_) {}
+      if (!mine.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div class="border-t border-slate-200 pt-3 space-y-2"><div class="text-xs font-black text-slate-600">تنبيهاتك على هذا الجهاز:</div>' +
+        mine.map(a =>
+          '<div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">' +
+            '<div class="text-[11px] font-bold text-slate-700">' + alertLabelOf(a) + '</div>' +
+            '<button type="button" onclick="deleteMyAlert(' + Number(a.id) + ')" class="text-red-500 hover:text-red-700 text-[11px] font-black cursor-pointer flex items-center gap-1"><i class="fa-solid fa-trash-can"></i> إيقاف</button>' +
+          '</div>'
+        ).join('') + '</div>';
+    }
+    async function deleteMyAlert(id) {
+      let endpoint = '';
+      try { endpoint = localStorage.getItem('abuelhamd_alert_endpoint') || ''; } catch (_) {}
+      if (!endpoint) { showToast('تعذر تحديد جهازك'); return; }
+      try {
+        const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/delete_my_alert', {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alert_id: id, p_endpoint: endpoint })
+        });
+        if (!resp.ok) { showToast('تعذر الإيقاف — جرّب تاني'); return; }
+        let mine = [];
+        try { mine = JSON.parse(localStorage.getItem('abuelhamd_my_alerts') || '[]'); } catch (_) {}
+        mine = mine.filter(a => a.id !== id);
+        try { localStorage.setItem('abuelhamd_my_alerts', JSON.stringify(mine)); } catch (_) {}
+        showToast('تم إيقاف التنبيه');
+        renderMyAlerts();
+      } catch (e) {
+        showToast('تعذر الإيقاف — جرّب تاني');
+      }
+    }
 </script>
 
 </body></html>
