@@ -34,6 +34,7 @@
   function dash() {
     var end = new Date(me.end_at).getTime();
     shell('<div style="' + C + '"><div style="font-weight:900">أهلاً ' + esc(me.display_name) + '</div><div style="font-size:12px;color:#cbd5e1">' + esc(me.plan || '') + '</div><div style="margin-top:8px;color:#e6c36a;font-weight:900" id="left"></div><div style="font-size:12px;color:#94a3b8">ينتهي: ' + new Date(end).toLocaleString('ar-EG') + '</div><button onclick="premLogout()" style="' + B2 + ';margin-top:8px">تسجيل خروج</button></div>' +
+      '<div style="' + C + '"><div style="font-weight:900;margin-bottom:6px">🗺️ الخريطة المتقدمة</div><div style="font-size:12px;color:#cbd5e1;margin-bottom:6px">أسماء المناطق على الخريطة، وموقع أي قطعة على جوجل</div><button onclick="premMap()" style="' + B + ';width:100%">فتح الخريطة</button></div>' +
       '<div style="' + C + '"><div style="font-weight:900;margin-bottom:6px">📄 نماذج العقود (للطباعة)</div><div id="tpls" style="font-size:13px">...</div></div>' +
       '<div style="' + C + '"><div style="font-weight:900;margin-bottom:6px">طلب استشارة أو معاينة</div><select id="rk" style="' + I + '"><option value="consultation">استشارة</option><option value="inspection">معاينة</option></select><textarea id="rm" rows="4" placeholder="اكتب تفاصيل طلبك" style="' + I + '"></textarea><input id="rph" placeholder="رقم موبايل للتواصل (اختياري)" style="' + I + '"><button onclick="premReq()" style="' + B + ';width:100%">إرسال للإدارة</button><div id="premMsg" style="margin-top:8px;font-size:13px"></div></div>' +
       '<div style="' + C + '"><div style="font-weight:900;margin-bottom:6px">طلباتي وردود الإدارة</div><div id="mine" style="font-size:13px">...</div></div>');
@@ -59,5 +60,66 @@
       shell('<div style="' + C + ';text-align:center"><div style="font-size:40px">✅</div><div style="font-weight:900">تم استلام طلبك</div><div style="margin:8px 0">كود الطلب: <b style="color:#e6c36a;font-size:22px">' + esc(r.code) + '</b></div><div style="font-size:12px;color:#cbd5e1">احتفظ بالكود. هنراجع التحويل ونبعتلك بيانات الدخول.</div><button onclick="premClose()" style="' + B2 + ';margin-top:10px">تمام</button></div>');
     }).catch(function (e) { msg(e.message); });
   };
+
+  /* ===== Premium map: plot pins with zone labels + locator ===== */
+  var PAL = ['#f59e0b', '#38bdf8', '#34d399', '#f472b6', '#a78bfa', '#fb7185', '#facc15', '#22d3ee'];
+  var MP = null;
+  window.premMap = function () {
+    shell('<div id="mapWrap" style="margin-top:8px"><div style="' + C + '">...</div></div>', 'الخريطة المتقدمة');
+    rpc('prem_map_get', { p_token: tok }).then(function (D) { mapInit(D); }).catch(function (e) { if (e.code === 'SUB_EXPIRED') out(e.message); else msg(e.message); });
+  };
+  function mapInit(D) {
+    var areas = [], pts = [], si = 0;
+    (D.t || []).forEach(function (sec, i) { (sec.s || []).forEach(function (sub) { (sub.l || []).forEach(function (l) {
+      if (l.p && l.p.length) areas.push({ name: l.n, sec: sec.n, sub: sub.n, c: PAL[i % PAL.length], p: l.p });
+      else if (l.pt) pts.push({ name: l.n, sec: sec.n, c: PAL[i % PAL.length], lat: l.pt[0], lon: l.pt[1] });
+    }); }); });
+    var all = []; areas.forEach(function (a) { a.p.forEach(function (q) { all.push(q); }); }); pts.forEach(function (q) { all.push([0, q.lat, q.lon]); });
+    if (!all.length) { document.getElementById('mapWrap').innerHTML = '<div style="' + C + '">لا توجد بيانات خريطة بعد</div>'; return; }
+    var lat0 = all.reduce(function (a, q) { return a + q[1]; }, 0) / all.length, lon0 = all.reduce(function (a, q) { return a + q[2]; }, 0) / all.length, kx = Math.cos(lat0 * Math.PI / 180) * 111320, ky = 110574;
+    function px(lat, lon) { return [(lon - lon0) * kx, -(lat - lat0) * ky]; }
+    areas.forEach(function (a) { a.m = a.p.map(function (q) { return px(q[1], q[2]); }); var cx = 0, cy = 0; a.m.forEach(function (m) { cx += m[0]; cy += m[1]; }); a.cx = cx / a.m.length; a.cy = cy / a.m.length; });
+    pts.forEach(function (q) { q.m = px(q.lat, q.lon); });
+    var sorted = areas.slice().sort(function (a, b) { return b.p.length - a.p.length; });
+    var opts = areas.map(function (a, i) { return '<option value="' + i + '">' + esc(a.name) + '</option>'; }).join('');
+    document.getElementById('mapWrap').innerHTML = '<div style="' + C + ';padding:8px"><div style="display:flex;gap:6px"><select id="mA" style="' + I + ';flex:2">' + opts + '</select><input id="mN" placeholder="رقم القطعة" inputmode="numeric" style="' + I + ';flex:1"><button onclick="premMapFind()" style="' + B + '">بحث</button></div><div id="mMsg" style="font-size:12px;color:#fca5a5"></div></div>' +
+      '<div style="position:relative;height:58vh;border-radius:16px;overflow:hidden;border:1px solid #c9a24a55;background:#0e1b2e"><canvas id="mC" style="width:100%;height:100%;touch-action:none;display:block"></canvas><div style="position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:6px"><button onclick="premMapZ(1.5)" style="' + B2 + '">+</button><button onclick="premMapZ(1/1.5)" style="' + B2 + '">-</button><button onclick="premMapFit()" style="' + B2 + '">⤢</button></div></div>' +
+      '<div id="mInfo" style="' + C + ';font-size:13px;color:#cbd5e1">اضغط على أي قطعة لتفاصيلها، أو اختر المنطقة واكتب رقم القطعة.</div>' +
+      '<button onclick="premClose();try{switchTab(\'citymap\')}catch(e){}" style="' + B2 + ';width:100%">فتح مخطط المدينة (الخريطة العامة)</button><button onclick="premOpen()" style="' + B2 + ';width:100%;margin-top:8px">رجوع</button>';
+    var cv = document.getElementById('mC'), ctx = cv.getContext('2d'), dpr = Math.min(devicePixelRatio || 1, 2);
+    var v = { x: 0, y: 0, s: 1 }, sel = null, ptr = {}, pinch = null, drag = null, moved = false;
+    var b = { x0: 1e12, y0: 1e12, x1: -1e12, y1: -1e12 };
+    areas.forEach(function (a) { a.m.forEach(function (m) { b.x0 = Math.min(b.x0, m[0]); b.x1 = Math.max(b.x1, m[0]); b.y0 = Math.min(b.y0, m[1]); b.y1 = Math.max(b.y1, m[1]); }); }); pts.forEach(function (q) { b.x0 = Math.min(b.x0, q.m[0]); b.x1 = Math.max(b.x1, q.m[0]); b.y0 = Math.min(b.y0, q.m[1]); b.y1 = Math.max(b.y1, q.m[1]); });
+    function size() { var w = cv.clientWidth, h = cv.clientHeight; if (cv.width !== w * dpr) { cv.width = w * dpr; cv.height = h * dpr; } return [w, h]; }
+    function fit() { var z = size(); v.x = (b.x0 + b.x1) / 2; v.y = (b.y0 + b.y1) / 2; v.s = Math.min(z[0] / (b.x1 - b.x0 + 200), z[1] / (b.y1 - b.y0 + 200)); draw(); }
+    function toS(m) { var z = size(); return [(m[0] - v.x) * v.s + z[0] / 2, (m[1] - v.y) * v.s + z[1] / 2]; }
+    function draw() {
+      var z = size(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, z[0], z[1]);
+      var r = Math.max(1.5, Math.min(5, v.s * 6));
+      areas.forEach(function (a) { ctx.fillStyle = a.c; ctx.globalAlpha = 0.9; a.m.forEach(function (m) { var p = toS(m); if (p[0] < -5 || p[1] < -5 || p[0] > z[0] + 5 || p[1] > z[1] + 5) return; ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fill(); }); });
+      ctx.globalAlpha = 1;
+      pts.forEach(function (q) { var p = toS(q.m); ctx.fillStyle = '#fff'; ctx.strokeStyle = q.c; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, 7); ctx.fill(); ctx.stroke(); });
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; var boxes = [];
+      function label(txt, p, fs, col) { ctx.font = '800 ' + fs + 'px sans-serif'; var w = ctx.measureText(txt).width + 6, bx = [p[0] - w / 2, p[1] - fs / 2, p[0] + w / 2, p[1] + fs / 2]; if (bx[2] < 0 || bx[0] > z[0] || bx[3] < 0 || bx[1] > z[1]) return; for (var i = 0; i < boxes.length; i++) { var o = boxes[i]; if (bx[0] < o[2] && bx[2] > o[0] && bx[1] < o[3] && bx[3] > o[1]) return; } boxes.push(bx); ctx.lineWidth = 4; ctx.strokeStyle = '#0b1626'; ctx.strokeText(txt, p[0], p[1]); ctx.fillStyle = col; ctx.fillText(txt, p[0], p[1]); }
+      pts.forEach(function (q) { var p = toS(q.m); label(q.name, [p[0], p[1] - 14], 12, '#fff'); });
+      sorted.forEach(function (a) { label(a.name, toS([a.cx, a.cy]), 13, a.c); });
+      if (v.s > 0.9) { areas.forEach(function (a) { a.m.forEach(function (m, i) { var p = toS(m); if (p[0] < 0 || p[1] < 0 || p[0] > z[0] || p[1] > z[1]) return; ctx.font = '700 9px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(a.p[i][0], p[0], p[1] - 9); }); }); }
+      if (sel) { var p = toS(sel.m); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p[0], p[1], 11, 0, 7); ctx.stroke(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p[0], p[1], 11, 0, 7); ctx.stroke(); }
+    }
+    function info(it) {
+      sel = it; var la = it.lat, lo = it.lon;
+      document.getElementById('mInfo').innerHTML = '<div style="font-weight:900;color:#e6c36a">' + esc(it.area) + (it.num ? ' - قطعة ' + esc(it.num) : '') + '</div><div style="font-size:12px;color:#94a3b8">' + esc(it.sec || '') + '</div><div style="font-size:12px;margin:4px 0">الإحداثيات: ' + la.toFixed(5) + ', ' + lo.toFixed(5) + '</div><a target="_blank" rel="noopener" href="https://www.google.com/maps?q=' + la + ',' + lo + '" style="' + B + ';display:block;text-align:center;text-decoration:none;margin-top:6px">فتح في خرائط جوجل</a><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + la + ',' + lo + '" style="' + B2 + ';display:block;text-align:center;text-decoration:none;margin-top:6px">ابدأ الملاحة</a><div style="font-size:11px;color:#94a3b8;margin-top:6px">الموقع تقريبي (حوالي متر إلى مترين). راجع القطعة على الطبيعة.</div>'; draw();
+    }
+    function nearest(sx, sy) { var best = null, bd = 22; areas.forEach(function (a) { a.m.forEach(function (m, i) { var p = toS(m), d = Math.hypot(p[0] - sx, p[1] - sy); if (d < bd) { bd = d; best = { area: a.name, sec: a.sub, num: a.p[i][0], lat: a.p[i][1], lon: a.p[i][2], m: m }; } }); }); pts.forEach(function (q) { var p = toS(q.m), d = Math.hypot(p[0] - sx, p[1] - sy); if (d < bd) { bd = d; best = { area: q.name, sec: q.sec, lat: q.lat, lon: q.lon, m: q.m }; } }); return best; }
+    function zoomAt(f, sx, sy) { var z = size(), wx = (sx - z[0] / 2) / v.s + v.x, wy = (sy - z[1] / 2) / v.s + v.y; v.s = Math.max(0.02, Math.min(40, v.s * f)); v.x = wx - (sx - z[0] / 2) / v.s; v.y = wy - (sy - z[1] / 2) / v.s; draw(); }
+    cv.onpointerdown = function (e) { cv.setPointerCapture(e.pointerId); ptr[e.pointerId] = [e.offsetX, e.offsetY]; moved = false; var k = Object.keys(ptr); if (k.length === 2) { pinch = Math.hypot(ptr[k[0]][0] - ptr[k[1]][0], ptr[k[0]][1] - ptr[k[1]][1]); } drag = [e.offsetX, e.offsetY]; };
+    cv.onpointermove = function (e) { if (!ptr[e.pointerId]) return; ptr[e.pointerId] = [e.offsetX, e.offsetY]; var k = Object.keys(ptr); if (k.length === 2 && pinch) { var d = Math.hypot(ptr[k[0]][0] - ptr[k[1]][0], ptr[k[0]][1] - ptr[k[1]][1]); zoomAt(d / pinch, (ptr[k[0]][0] + ptr[k[1]][0]) / 2, (ptr[k[0]][1] + ptr[k[1]][1]) / 2); pinch = d; moved = true; } else if (k.length === 1 && drag) { var dx = e.offsetX - drag[0], dy = e.offsetY - drag[1]; if (Math.abs(dx) + Math.abs(dy) > 3) moved = true; v.x -= dx / v.s; v.y -= dy / v.s; drag = [e.offsetX, e.offsetY]; draw(); } };
+    cv.onpointerup = cv.onpointercancel = function (e) { var wasTap = !moved && Object.keys(ptr).length === 1; delete ptr[e.pointerId]; pinch = null; drag = null; if (wasTap) { var n = nearest(e.offsetX, e.offsetY); if (n) info(n); } };
+    cv.onwheel = function (e) { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.offsetX, e.offsetY); };
+    window.premMapZ = function (f) { var z = size(); zoomAt(f, z[0] / 2, z[1] / 2); };
+    window.premMapFit = fit;
+    window.premMapFind = function () { var a = areas[+document.getElementById('mA').value], n = document.getElementById('mN').value.trim(), e = document.getElementById('mMsg'); e.textContent = ''; var i = a.p.findIndex(function (q) { return String(q[0]) === n; }); if (i < 0) { e.textContent = 'الرقم ده مش مسجل في ' + a.name + ' (الأرقام من ' + a.p[0][0] + ' إلى ' + a.p[a.p.length - 1][0] + ' والتسجيل لسه مستمر)'; return; } v.x = a.m[i][0]; v.y = a.m[i][1]; v.s = Math.max(v.s, 2.5); info({ area: a.name, sec: a.sub, num: a.p[i][0], lat: a.p[i][1], lon: a.p[i][2], m: a.m[i] }); };
+    fit(); setTimeout(fit, 150);
+  }
   (function btn() { function add() { if (document.getElementById('premBtn')) return; var h = document.querySelector('header .flex.flex-wrap.items-center.gap-1\\.5'); if (!h) return; var b = document.createElement('button'); b.id = 'premBtn'; b.type = 'button'; b.onclick = window.premOpen; b.style.cssText = 'background:linear-gradient(90deg,#c9a24a,#f3d77a);color:#0b1626;font-weight:900;font-size:12px;border-radius:12px;padding:8px 12px;cursor:pointer;border:0;box-shadow:0 0 10px #e6c36a88'; b.innerHTML = '👑 بريميوم'; h.insertBefore(b, h.firstChild); var hd=document.querySelector('header'); if(hd&&!document.getElementById('premBanner')){var bn=document.createElement('button');bn.id='premBanner';bn.type='button';bn.onclick=window.premOpen;bn.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;cursor:pointer;background:linear-gradient(90deg,#b8862b,#f3d77a,#b8862b);color:#0b1626;font-weight:900;font-size:14px;padding:9px 12px;direction:rtl';bn.innerHTML='<span style="font-size:20px">👑</span><span>قسم بريميوم للمشتركين: استشارات، معاينات ونماذج عقود</span><span style="background:#0b1626;color:#f3d77a;border-radius:10px;padding:3px 10px;font-size:12px">اعرف أكتر ◀</span>';hd.parentNode.insertBefore(bn,hd.nextSibling);} } if (document.readyState !== 'loading') add(); else document.addEventListener('DOMContentLoaded', add); })();
 })();
