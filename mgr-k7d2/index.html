@@ -221,7 +221,7 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
         </button>
 
         <!-- أيقونة طلبات العملاء (تقع في لوحة التحكم للإدارة فقط ومخفية عن العام) -->
-        <button type="button" onclick="switchTab('pending')" title="طلبات وعقارات العملاء الواردة" class="admin-only-btn bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/60 text-amber-300 text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer relative">
+        <button type="button" onclick="panelGo('pending')" title="طلبات وعقارات العملاء الواردة" class="admin-only-btn bg-amber-500/20 hover:bg-amber-500/35 border border-amber-400/60 text-amber-300 text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition cursor-pointer relative">
           <i class="fa-solid fa-inbox text-gold-400"></i>
           <span>طلبات العملاء</span>
           <span id="headerPendingCountBadge" class="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
@@ -363,11 +363,11 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
           <button type="button" onclick="switchTab('news')" id="tab-news" data-section-key="news" class="tab-btn section-managed-el text-slate-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition">
             <i class="fa-solid fa-newspaper text-sky-400"></i> أخبار الجهاز
           </button>
-          <button type="button" onclick="switchTab('pending')" id="tab-pending" class="admin-only-btn tab-btn text-amber-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
+          <button type="button" onclick="panelGo('pending')" id="tab-pending" class="admin-only-btn tab-btn text-amber-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
             <i class="fa-solid fa-inbox"></i> طلبات العملاء
             <span id="pendingCountBadge" class="bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full">0</span>
           </button>
-          <button type="button" onclick="switchTab('chats')" id="tab-chats" class="admin-only-btn tab-btn text-teal-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
+          <button type="button" onclick="panelGo('chats')" id="tab-chats" class="admin-only-btn tab-btn text-teal-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition text-slate-300">
             <i class="fa-solid fa-comments"></i> المحادثات
           </button>
         </div>
@@ -3222,7 +3222,6 @@ html.panel-home #adminStatsStrip, html.panel-home header nav, html.panel-home #f
     }
 
     function switchTab(tab) {
-      if (document.documentElement.classList.contains('panel-home')) { document.documentElement.classList.remove('panel-home'); try { window.scrollTo(0, 0); } catch (_) {} }
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('bg-gold-500', 'text-navy-950');
