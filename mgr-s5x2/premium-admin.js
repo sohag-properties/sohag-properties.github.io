@@ -22,9 +22,9 @@
   window.premAdmOpen = function () { root().style.display = 'block'; document.body.style.overflow = 'hidden'; draw(); };
   window.premAdmTab = function (t) { tab = t; draw(); };
   function draw() {
-    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات'], ['co', 'الشركات']];
+    var T = [['pay', 'طلبات الدفع'], ['stmt', 'كشف المشتركين'], ['subs', 'إدارة الحسابات'], ['plans', 'الباقات والأسعار'], ['tpl', 'العقود'], ['req', 'استشارات ومعاينات'], ['co', 'الشركات'], ['views', 'المشاهدات']];
     root().innerHTML = '<div style="max-width:760px;margin:0 auto;padding:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">👑 الخدمات المدفوعة (تجريبي)</b><button onclick="premAdmClose()" style="' + B2 + '">إغلاق ✕</button></div><div style="margin:8px 0">' + T.map(function (x) { return '<button onclick="premAdmTab(\'' + x[0] + '\')" style="' + (tab === x[0] ? B : B2) + '">' + x[1] + '</button>'; }).join('') + '</div><div id="pab">...</div></div>';
-    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq, co: vCo })[tab]();
+    ({ pay: vPay, stmt: vStmt, subs: vSubs, plans: vPlans, tpl: vTpl, req: vReq, co: vCo, views: vViews })[tab]();
   }
   function body(h) { var e = document.getElementById('pab'); if (e) e.innerHTML = h; }
   function box(h) { return '<div style="background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:10px;margin:8px 0;font-size:13px">' + h + '</div>'; }
@@ -65,6 +65,12 @@
 
   /* companies in the city */
   function shrinkImg(file, max, type) { return new Promise(function (res) { if (!file) return res(null); var r = new FileReader(); r.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = im.width * k; c.height = im.height * k; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL(type, 0.8).split(',')[1]); }; im.onerror = function () { res(null); }; im.src = r.result; }; r.readAsDataURL(file); }); }
+  function vViews() {
+    rpc('admin_views_ranking').then(function (d) {
+      var P = (typeof properties !== 'undefined' ? properties : []), by = {}; P.forEach(function (p) { by[String(p.id)] = p; });
+      var rows = d.posts.map(function (x, i) { var p = by[String(x.id)]; return '<tr style="border-top:1px solid #e2e8f0"><td style="padding:6px">' + (i + 1) + '</td><td style="padding:6px">' + (p ? esc(p.title) + (p.location ? ' <span style="color:#64748b">(' + esc(p.location) + ')</span>' : '') : '<span style="color:#94a3b8">إعلان محذوف أو غير موجود (' + esc(x.id) + ')</span>') + '</td><td style="padding:6px;font-weight:900">' + x.views + '</td><td style="padding:6px">' + x.last + '</td></tr>'; }).join('');
+      body(box('<b>إحصائيات حقيقية (بدون أرقام مضافة)</b><div style="margin-top:6px">زوار مختلفون (أجهزة): <b>' + d.visitors + '</b> • زيارات اليوم: <b>' + d.today + '</b> • إجمالي الزيارات: <b>' + d.visits + '</b></div><div style="font-size:11px;color:#64748b;margin-top:4px">المشاهدة = جهاز واحد لكل إعلان في اليوم، بعد ظهور الإعلان على الشاشة ثانية. العدد على الإعلان يظهر بعد أول مشاهدة. إجمالي الزوار يظهر للزوار فقط بعد 100 جهاز. الحساب بيبدأ من لحظة التفعيل.</div>') + box('<b>ترتيب الإعلانات الأكثر مشاهدة</b>' + (rows ? '<table style="width:100%;font-size:13px;margin-top:6px"><tr style="color:#64748b"><td>#</td><td>الإعلان</td><td>المشاهدات</td><td>آخر مشاهدة</td></tr>' + rows + '</table>' : '<div style="color:#64748b;margin-top:6px">لسه مفيش مشاهدات متسجلة.</div>'))); }).catch(fail);
+  }
   function vCo() {
     rpc('admin_companies_list').then(function (l) {
       body(box('<b>شركة جديدة</b><input id="cn" placeholder="اسم الشركة" style="' + I + '"><textarea id="ca" rows="2" placeholder="نبذة عن الشركة" style="' + I + '"></textarea><input id="cph" placeholder="تليفون" style="' + I + '"><input id="cwa" placeholder="واتساب (بالأرقام مع كود الدولة)" style="' + I + '"><input id="cwb" placeholder="الموقع (اختياري)" style="' + I + '"><label style="font-size:12px">الشعار</label><input id="clg" type="file" accept="image/*" style="' + I + '"><button onclick="coSave()" style="' + B + '">حفظ الشركة</button>') +

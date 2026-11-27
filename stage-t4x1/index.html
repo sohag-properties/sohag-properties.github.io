@@ -3467,8 +3467,9 @@ setTimeout(done,SPLASH_MS);el.addEventListener('click',done);})();</script>
       ` : '';
 
       return `
-        <article class="bg-white rounded-3xl border ${item.hidden ? 'border-purple-400 opacity-75' : 'border-slate-200'} shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between relative">
+        <article data-pid="${item.id}" class="bg-white rounded-3xl border ${item.hidden ? 'border-purple-400 opacity-75' : 'border-slate-200'} shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between relative">
           ${item.sold ? `<div class="sold-stamp">تم البيع</div>` : ''}
+          <div class="pv-badge" data-pv="${item.id}" style="display:none;position:absolute;bottom:8px;left:8px;z-index:15;background:#0b1626cc;color:#fff;font-size:10px;font-weight:800;border-radius:10px;padding:3px 8px"></div>
           ${oppActive(item) ? `<div class="absolute top-2 left-2 z-20 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-lg opp-blink flex items-center gap-1"><i class="fa-solid fa-bolt"></i> فرصة</div>` : ''}
           <div>
             <div class="relative h-48 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 flex items-center justify-center overflow-hidden group"
@@ -5887,12 +5888,12 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
   function subHead(x,cnt){ return '<div class="col-span-full flex items-center gap-2 pt-2"><span class="w-8 h-8 rounded-xl bg-navy-900 text-gold-400 flex items-center justify-center shrink-0"><i class="fa-solid '+x.icon+' text-sm"></i></span><div class="min-w-0"><div class="text-sm sm:text-base font-black text-navy-900 truncate">'+esc(x.name)+'</div>'+(x.tag?'<div class="text-[10px] font-bold text-slate-500">'+x.tag+'</div>':'')+'</div><span class="mr-auto text-[11px] font-extrabold text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-300">'+cnt+'</span><span class="flex-1 h-px bg-amber-300/70"></span></div>'; }
   function card(p,first){
     var im=(p.images&&p.images[0])||''; var price=Number(p.totalPrice||0);
-    return '<div class="hb-card bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md overflow-hidden" data-id="'+esc(p.id)+'" onclick="openImageGallery(\''+esc(p.id)+'\',0)">'
+    return '<div class="hb-card bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md overflow-hidden" style="position:relative" data-pid="'+esc(p.id)+'" data-id="'+esc(p.id)+'" onclick="openImageGallery(\''+esc(p.id)+'\',0)">'
       +'<div class="hb-ph bg-slate-200">'+(im?'<img src="'+esc(im)+'" '+(first?'':'loading="lazy" ')+'decoding="async" referrerpolicy="no-referrer" alt="">':'')+'<span class="hb-cat absolute top-2.5 right-2.5 bg-navy-900/90 text-gold-400 text-[10px] font-black px-2.5 py-1 rounded-full">'+esc(getCategoryLabel(p.category))+'</span>'+(p.sold?'<span class="absolute top-2.5 left-2.5 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full">تم البيع</span>':'')+'</div>'
       +'<div class="hb-bd p-3.5 space-y-2"><div class="flex flex-wrap gap-1.5">'+(p.location?'<span class="hb-pill bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.location)+'</span>':'')+(p.area?'<span class="hb-pill bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-lg">'+esc(p.area)+' م²</span>':'')+'</div>'
       +'<div class="hb-t text-sm font-black text-navy-900 leading-snug">'+esc(p.title)+'</div>'
       +'<div class="hb-pr bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between"><span class="text-[10px] font-bold text-slate-500">السعر المطلوب</span><span class="text-sm font-black text-emerald-700">'+(price>0?price.toLocaleString('ar-EG')+' ج.م':'اتصل للسعر')+'</span></div>'
-      +(p.subcategory?'<div class="hb-loc text-[11px] font-bold text-slate-500 truncate"><i class="fa-solid fa-tag text-gold-600"></i> '+esc(p.subcategory)+'</div>':'')+'</div></div>';
+      +(p.subcategory?'<div class="hb-loc text-[11px] font-bold text-slate-500 truncate"><i class="fa-solid fa-tag text-gold-600"></i> '+esc(p.subcategory)+'</div>':'')+'</div><div class="pv-badge" data-pv="'+esc(p.id)+'" style="display:none;position:absolute;top:8px;left:8px;z-index:5;background:#0b1626cc;color:#fff;font-size:10px;font-weight:800;border-radius:10px;padding:3px 8px"></div></div>';
   }
   function rowHtml(rk,list,open){
     return (list.length?'<button type="button" class="hb-ar r w-8 h-8 rounded-full bg-black/65 text-gold-400 items-center justify-center cursor-pointer" onclick="window.__home.step(\''+esc(rk)+'\',-1)"><i class="fa-solid fa-chevron-right text-xs"></i></button><button type="button" class="hb-ar l w-8 h-8 rounded-full bg-black/65 text-gold-400 items-center justify-center cursor-pointer" onclick="window.__home.step(\''+esc(rk)+'\',1)"><i class="fa-solid fa-chevron-left text-xs"></i></button>':'')
@@ -6025,5 +6026,6 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
 
 </script>
 <script src="premium.js?v=3"></script>
+<script src="views.js?v=1"></script>
 <script src="companies.js?v=2"></script>
 </body></html>
