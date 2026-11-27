@@ -2932,7 +2932,8 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       const r = await fetch(SUPABASE_URL + '/rest/v1/app_kv?key=eq.abuelhamd_properties&select=value', { headers: cloudHeaders(null, tok), cache: 'no-store' });
       if (!r.ok) return;
       const rows = await r.json(); const sv = rows[0] && rows[0].value; if (!Array.isArray(sv)) return;
-      const strip = (x) => { const c = Object.assign({}, x); delete c._ts; return JSON.stringify(c); };
+      const canon = (x) => Array.isArray(x) ? x.map(canon) : (x && typeof x === 'object') ? Object.keys(x).sort().reduce((o, k) => { o[k] = canon(x[k]); return o; }, {}) : x;
+      const strip = (x) => { const c = Object.assign({}, x); delete c._ts; return JSON.stringify(canon(c)); };
       const sent = JSON.parse(sentRaw); const smap = {}; sv.forEach(x => { smap[x.id] = x; });
       const rejected = sent.filter(x => smap[x.id] && strip(smap[x.id]) !== strip(x));
       const nowRaw = localStorage.getItem('abuelhamd_properties');
