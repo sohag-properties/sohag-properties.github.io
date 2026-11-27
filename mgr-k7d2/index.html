@@ -2419,6 +2419,16 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
 
     let properties = JSON.parse(localStorage.getItem('abuelhamd_properties') || 'null') || [];
     window.__propsLoading = !localStorage.getItem('abuelhamd_properties');
+    // ===== شبكة أمان: لقطة من بيانات الجهاز (IndexedDB) قبل أي مزامنة، عشان أي عنصر محلي ما اترفعش يترجع =====
+    (function () {
+      try {
+        const ps = JSON.parse(localStorage.getItem('abuelhamd_properties') || '[]'), pn = JSON.parse(localStorage.getItem('abuelhamd_pending') || '[]');
+        const rq = indexedDB.open('mgr_rescue', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('items', { keyPath: 'id' });
+        rq.onsuccess = () => { try { const tx = rq.result.transaction('items', 'readwrite'), st = tx.objectStore('items');
+          [].concat(ps.map(x => ['props', x]), pn.map(x => ['pend', x])).forEach(a => { if (a[1] && a[1].id) st.put({ id: a[1].id, src: a[0], at: Date.now(), item: a[1] }); }); } catch (_) {} };
+      } catch (_) {}
+    })();
     let pendingSubmissions = JSON.parse(localStorage.getItem('abuelhamd_pending') || 'null') || [];
     let newsItems = JSON.parse(localStorage.getItem('abuelhamd_news') || 'null') || DEFAULT_NEWS;
     let adminAccounts = JSON.parse(localStorage.getItem('abuelhamd_admins') || 'null') || DEFAULT_ADMINS;
@@ -5695,6 +5705,35 @@ window.addEventListener('DOMContentLoaded', function(){
       if (open) ['counts', 'stats', 'props', 'inbox', 'content', 'cat', 'admin'].forEach(k => { window.__acc[k] = true; });
       window.__panelSig = null; panelRender();
     }
+
+    function mgrRescueIdb() { return new Promise((res, rej) => { const rq = indexedDB.open('mgr_rescue', 1); rq.onupgradeneeded = () => rq.result.createObjectStore('items', { keyPath: 'id' }); rq.onsuccess = () => { const g = rq.result.transaction('items').objectStore('items').getAll(); g.onsuccess = () => res(g.result); g.onerror = () => rej(g.error); }; rq.onerror = () => rej(rq.error); }); }
+    async function mgrRescueOpen() {
+      let box = document.getElementById('mgrRescueBox');
+      if (!box) { box = document.createElement('div'); box.id = 'mgrRescueBox'; box.className = 'fixed inset-0 z-[100000] bg-black/70 flex items-start justify-center p-3 overflow-auto'; document.body.appendChild(box); }
+      const draw = (h) => { box.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-md p-4 mt-6 text-sm font-bold text-slate-800" dir="rtl"><div class="flex justify-between items-center mb-3"><b>🛟 استرجاع من الجهاز</b><button type="button" onclick="document.getElementById(\'mgrRescueBox\').remove()" class="text-slate-500 text-lg cursor-pointer">✕</button></div>' + h + '</div>'; };
+      draw('بيفحص...');
+      try {
+        const tok = await cloudToken(); if (!tok) { draw('<div class="text-red-700">لازم تسجل دخول للسحابة الأول (٧ ضغطات على الأيقونة في شاشة القفل).</div>'); return; }
+        const rows = await (await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,value&key=in.(abuelhamd_properties,abuelhamd_pending)', { headers: cloudHeaders(null, tok) })).json();
+        const ids = new Set(); rows.forEach(r => (Array.isArray(r.value) ? r.value : []).forEach(x => x && ids.add(x.id)));
+        const local = (await mgrRescueIdb()).filter(r => !ids.has(r.id));
+        window.__rescueList = local;
+        if (!local.length) { draw('كل اللي محفوظ على الجهاز موجود على السيرفر. مفيش حاجة ضايعة على الجهاز ده.'); return; }
+        draw('عناصر موجودة على جهازك بس مش على السيرفر (' + local.length + '). الرجوع بيحطها في الواردة <b>غير منشورة</b>:' + local.map((r, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String((r.item.title || r.item.id)).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (r.item.location || '') + ' • ' + (r.item.totalPrice || r.item.price || '') + '</div><button type="button" onclick="mgrRescueRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join(''));
+      } catch (e) { draw('<div class="text-red-700">فشل الفحص: ' + String(e && e.message || e) + '</div>'); }
+    }
+    async function mgrRescueRestore(i, btn) {
+      const r = (window.__rescueList || [])[i]; if (!r) return;
+      btn.disabled = true; btn.textContent = '...';
+      try {
+        const item = Object.assign({}, r.item); delete item.hidden; delete item.hold; delete item.holdReason;
+        const tok = await cloudToken();
+        const rs = await fetch(SUPABASE_URL + '/rest/v1/rpc/submit_pending', { method: 'POST', headers: cloudHeaders({}, tok), body: JSON.stringify({ item }) });
+        if (!rs.ok) { let m = 'HTTP ' + rs.status; try { const j = await rs.json(); if (j && j.message) m = j.message; } catch (_) {} throw new Error(m); }
+        await cloudPullAll(); renderPendingSubmissions(); updatePendingBadges();
+        btn.textContent = 'اترجع للواردة ✓'; btn.className = 'mt-2 bg-slate-300 text-slate-800 rounded-lg px-3 py-1.5 text-xs';
+      } catch (e) { btn.disabled = false; btn.textContent = 'فشل: ' + String(e && e.message || e); }
+    }
     function panelRender() {
       const box = document.getElementById('panelAcc'); if (!box) return;
       const list = (typeof properties !== 'undefined' && properties) || [];
@@ -5721,6 +5760,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ['inbox', '📩 الطلبات والمحادثات', (pend !== '0' || (ac && ac.openRequests)) ? ' (' + pend + ' واردة • ' + (ac ? ac.openRequests : '...') + ' طلب)' : '', grid([tile('fa-inbox', 'عقارات واردة من العملاء (' + pend + ')', "panelGo('pending')", 'bg-amber-600'), tile('fa-comments', 'طلبات ومحادثات العملاء' + (ac ? ' (' + ac.openRequests + ' طلب • ' + ac.waitingChats + ' منتظر)' : ''), "panelGo('chats')", 'bg-teal-700')])],
         ['content', '🗂️ الأقسام والمحتوى', '', grid([tile('fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', 'panelAct(openSectionsManager)', 'bg-purple-700'), tile('fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'), tile('fa-shop', 'المولات', 'panelAct(openMallsManager)', 'bg-navy-700')])],
         ['cat', '📋 عقارات كل قسم', '', '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">' + cats + '</div>'],
+        ['rescue', '🛟 استرجاع من الجهاز', '', grid([tile('fa-life-ring', 'فحص واسترجاع عناصر ضايعة', 'mgrRescueOpen()', 'bg-rose-700')])],
         ['admin', '⚙️ الإدارة والإعدادات', '', grid([tile('fa-user-shield', 'المشرفون', 'panelAct(openAdminsManager)', 'bg-amber-700'), tile('fa-cloud', 'السحابة', 'panelAct(showCloudLogin)', 'bg-sky-800'), tile('fa-bullhorn', 'رسالة عاجلة', 'panelAct(openUrgentModal)', 'bg-red-700'), tile('fa-key', 'تغيير كلمة السر', 'panelAct(openPwdChange)', 'bg-slate-700'), tile('fa-download', 'نسخة احتياطية', 'panelAct(exportBackup)', 'bg-slate-600')])]
       ];
       const html = groups.map(g => { const o = !!window.__acc[g[0]]; return '<div class="rounded-2xl border border-slate-300 bg-white overflow-hidden"><button type="button" aria-expanded="' + o + '" onclick="panelAccToggle(\'' + g[0] + '\', this)" class="w-full flex items-center justify-between gap-2 bg-navy-900 text-white px-4 py-3 text-sm font-black cursor-pointer"><span>' + g[1] + (g[2] ? '<span class="text-amber-300 text-xs">' + g[2] + '</span>' : '') + '</span><span class="acc-ch text-gold-400">' + (o ? '▴' : '▾') + '</span></button><div class="acc-body' + (o ? ' open' : '') + '"><div class="p-3">' + g[3] + '</div></div></div>'; }).join('');
