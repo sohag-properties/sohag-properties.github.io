@@ -2534,12 +2534,13 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         if (!tok) throw new Error('مش مسجل دخول للسحابة');
         cloudDirtyAdd(key);
         await cloudFlushKey(key);
-        const r = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.' + encodeURIComponent(key) + '&select=value&_=' + Date.now(), { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
+        const r = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.' + encodeURIComponent(key) + '&select=value', { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Cache-Control': 'no-cache' }, cache: 'no-store' });
         if (!r.ok) throw new Error('تعذر التأكد من السيرفر (' + r.status + ')');
         const rows = await r.json();
         const remote = rows && rows[0] && rows[0].value;
         const local = JSON.parse(localStorage.getItem(key) || 'null');
-        if (JSON.stringify(remote) !== JSON.stringify(local)) throw new Error('السيرفر رجّع نسخة مختلفة');
+        const canon = (x) => Array.isArray(x) ? x.map(canon) : (x && typeof x === 'object') ? Object.keys(x).sort().reduce((o, k) => { o[k] = canon(x[k]); return o; }, {}) : x;
+        if (JSON.stringify(canon(remote)) !== JSON.stringify(canon(local))) throw new Error('السيرفر رجّع نسخة مختلفة');
         return { ok: true };
       } catch (e) { return { ok: false, msg: String(e && e.message || e) }; }
     }
@@ -2852,14 +2853,14 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       try { if (!isAdminMode) enterAdminFromCloud(); } catch (_) {}
       } catch (e) { err.textContent = 'كلمة السر غير صحيحة'; err.classList.remove('hidden'); }
     }
-    async function cloudPullAll() {
+    async function cloudPullAll(force) {
       try {
         const tok = await cloudToken();
         const res = await fetch(SUPABASE_URL + '/rest/v1/' + cloudReadTable(tok) + '?select=key,value,updated_at', { headers: cloudHeaders(null, tok) });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const dirty = cloudDirtyGet();
         for (const r of await res.json()) {
-          if (CLOUD_SYNC_KEYS.indexOf(r.key) === -1 || dirty.indexOf(r.key) !== -1) continue;
+          if (CLOUD_SYNC_KEYS.indexOf(r.key) === -1 || (!force && dirty.indexOf(r.key) !== -1)) continue;
           cloudAssignLocal(r.key, r.value); syncMetaStamp(r.key, Date.parse(r.updated_at) || Date.now());
         }
       } catch (_) {}
@@ -2917,6 +2918,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         throw new Error(msg);
       }
       syncMetaStamp(key, Date.parse(ts));
+      if (key === 'abuelhamd_properties') { try { await cloudPostFlushProps(raw, tok); } catch (_) {} }
       if (cloudOverride[key] === raw) delete cloudOverride[key];
       { const nowRaw = (key in cloudOverride) ? cloudOverride[key] : localStorage.getItem(key); if (nowRaw === raw) cloudDirtyDel(key); else window.__reflush = true; }
       if (cloudDirtyGet().length === 0) {
@@ -2924,6 +2926,18 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         cloudFailStreak = 0; cloudLastError = '';
       }
       return true;
+    }
+    // بعد رفع العروض: نقرأ اللي السيرفر قبله فعلًا. أي تعديل قديم السيرفر رفضه يتبلّغ بيه بوضوح، والنسخة المحلية بتتحدّث (_ts)
+    async function cloudPostFlushProps(sentRaw, tok) {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/app_kv?key=eq.abuelhamd_properties&select=value', { headers: cloudHeaders(null, tok), cache: 'no-store' });
+      if (!r.ok) return;
+      const rows = await r.json(); const sv = rows[0] && rows[0].value; if (!Array.isArray(sv)) return;
+      const strip = (x) => { const c = Object.assign({}, x); delete c._ts; return JSON.stringify(c); };
+      const sent = JSON.parse(sentRaw); const smap = {}; sv.forEach(x => { smap[x.id] = x; });
+      const rejected = sent.filter(x => smap[x.id] && strip(smap[x.id]) !== strip(x));
+      const nowRaw = localStorage.getItem('abuelhamd_properties');
+      if (nowRaw === sentRaw) { properties = sv; try { localStorage.setItem('abuelhamd_properties', JSON.stringify(sv)); } catch (_) {} try { handleSearchFilter(); updateStats(); } catch (_) {} }
+      if (rejected.length) showSaveBanner(false, '⚠ السيرفر رفض ' + rejected.length + ' تعديل قديم (النسخة على السيرفر أحدث) — اتحدّث الجهاز بآخر نسخة. أعد التعديل لو لسه محتاجه.');
     }
     let cloudFlushAgain = false;
     const cloudInflight = {};
@@ -4270,6 +4284,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
           const idx = properties.findIndex(p => p.id === editId);
           if (idx !== -1) {
             propObj.hidden = properties[idx].hidden || false;
+            if (properties[idx]._ts) propObj._ts = properties[idx]._ts;
             properties[idx] = propObj;
           }
           logAdminAction('تعديل عرض عقاري', propObj.title);
@@ -4349,17 +4364,18 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
       modal.classList.remove('flex');
     }
 
-    function confirmDeleteProperty() {
+    async function confirmDeleteProperty() {
       const id = pendingDeletePropertyId;
       if (!id) { closeDeleteConfirmModal(); return; }
       const item = properties.find(p => p.id === id);
-      properties = properties.filter(p => p.id !== id);
-      safeSaveStorage('abuelhamd_properties', properties);
-      if (item) logAdminAction('حذف عرض', item.title);
-      updateStats();
-      handleSearchFilter();
       closeDeleteConfirmModal();
-      showToast("تم حذف العرض نهائيًا من جميع الأجهزة");
+      try {
+        await pendingRpc('admin_delete_listing', id);
+        await cloudPullAll(true);
+        if (item) logAdminAction('حذف عرض', item.title);
+        updateStats(); handleSearchFilter();
+        showSaveBanner(true, 'تم حذف العرض من السيرفر ✓');
+      } catch (e) { showSaveBanner(false, '⚠ ما اتحذفش — ' + String(e && e.message || e)); }
     }
 
     // 9. بوابة العملاء
@@ -4780,7 +4796,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/admin_approve_pending', { method: 'POST', headers: cloudHeaders({}, tok), body: JSON.stringify({ p_id: id }) });
         if (!r.ok) { let m = 'HTTP ' + r.status; try { const j = await r.json(); if (j && j.message) m = j.message; } catch (_) {} throw new Error(m); }
         const j = await r.json();
-        const v = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.abuelhamd_properties&select=value&_=' + Date.now(), { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, cache: 'no-store' });
+        const v = await fetch(SUPABASE_URL + '/rest/v1/public_kv?key=eq.abuelhamd_properties&select=value', { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, cache: 'no-store' });
         const rows = v.ok ? await v.json() : [];
         const live = !!(rows[0] && Array.isArray(rows[0].value) && rows[0].value.some(p => p && p.id === j.id));
         if (!live) throw new Error('اتحفظ بس مش ظاهر للجمهور لسه — ما تأكدتش');
@@ -5716,11 +5732,24 @@ window.addEventListener('DOMContentLoaded', function(){
         const tok = await cloudToken(); if (!tok) { draw('<div class="text-red-700">لازم تسجل دخول للسحابة الأول (٧ ضغطات على الأيقونة في شاشة القفل).</div>'); return; }
         const rows = await (await fetch(SUPABASE_URL + '/rest/v1/app_kv?select=key,value&key=in.(abuelhamd_properties,abuelhamd_pending)', { headers: cloudHeaders(null, tok) })).json();
         const ids = new Set(); rows.forEach(r => (Array.isArray(r.value) ? r.value : []).forEach(x => x && ids.add(x.id)));
+        let jr = []; try { const jj = await fetch(SUPABASE_URL + '/rest/v1/rpc/admin_list_journal', { method: 'POST', headers: cloudHeaders({}, tok), body: '{}' }); if (jj.ok) jr = await jj.json(); } catch (_) {}
+        window.__journalList = jr;
+        const jhtml = jr.length ? '<div class="mt-3 pt-3 border-t"><b>طلبات اتشالت من الواردة (سجل السيرفر) — ' + jr.length + '</b>' + jr.map((x, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String(x.title || x.id).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (x.location || '') + ' • ' + (x.price || '') + ' • ' + String(x.first_seen || '').slice(0, 16) + '</div><button type="button" onclick="mgrJournalRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join('') + '</div>' : '';
+        window.__journalHtml = jhtml;
         const local = (await mgrRescueIdb()).filter(r => !ids.has(r.id));
         window.__rescueList = local;
-        if (!local.length) { draw('كل اللي محفوظ على الجهاز موجود على السيرفر. مفيش حاجة ضايعة على الجهاز ده.'); return; }
-        draw('عناصر موجودة على جهازك بس مش على السيرفر (' + local.length + '). الرجوع بيحطها في الواردة <b>غير منشورة</b>:' + local.map((r, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String((r.item.title || r.item.id)).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (r.item.location || '') + ' • ' + (r.item.totalPrice || r.item.price || '') + '</div><button type="button" onclick="mgrRescueRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join(''));
+        if (!local.length) { draw('كل اللي محفوظ على الجهاز موجود على السيرفر. مفيش حاجة ضايعة على الجهاز ده.' + window.__journalHtml); return; }
+        draw('عناصر موجودة على جهازك بس مش على السيرفر (' + local.length + '). الرجوع بيحطها في الواردة <b>غير منشورة</b>:' + local.map((r, i) => '<div class="border rounded-xl p-2 mt-2"><div>' + String((r.item.title || r.item.id)).replace(/</g, '&lt;') + '</div><div class="text-[11px] text-slate-500">' + (r.item.location || '') + ' • ' + (r.item.totalPrice || r.item.price || '') + '</div><button type="button" onclick="mgrRescueRestore(' + i + ', this)" class="mt-2 bg-emerald-600 text-white rounded-lg px-3 py-1.5 text-xs cursor-pointer">أرجعه للواردة (مش منشور)</button></div>').join('' + window.__journalHtml);
       } catch (e) { draw('<div class="text-red-700">فشل الفحص: ' + String(e && e.message || e) + '</div>'); }
+    }
+    async function mgrJournalRestore(i, btn) {
+      const x = (window.__journalList || [])[i]; if (!x) return;
+      btn.disabled = true; btn.textContent = '...';
+      try {
+        await pendingRpc('admin_restore_journal', x.id);
+        await cloudPullAll(true); renderPendingSubmissions(); updatePendingBadges();
+        btn.textContent = 'اترجع للواردة ✓'; btn.className = 'mt-2 bg-slate-300 text-slate-800 rounded-lg px-3 py-1.5 text-xs';
+      } catch (e) { btn.disabled = false; btn.textContent = 'فشل: ' + String(e && e.message || e); }
     }
     async function mgrRescueRestore(i, btn) {
       const r = (window.__rescueList || [])[i]; if (!r) return;
