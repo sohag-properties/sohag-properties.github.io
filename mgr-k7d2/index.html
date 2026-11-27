@@ -2865,6 +2865,32 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         }
       } catch (_) {}
       window.__propsLoading = false; window.__cloudPulled = true; try { handleSearchFilter(); } catch (_) {}
+      try { if (cloudHasSession()) setTimeout(mgrMigratePhotos, 800); } catch (_) {}
+    }
+    // أي صورة base64 داخل العروض أو الطلبات (جاية من نموذج العملاء) بتتنقل لتخزين السحابة وتتحول لرابط، عشان تخزين الجهاز ما يتملاش
+    async function mgrMigratePhotos() {
+      if (window.__migratingPhotos || !cloudHasSession()) return;
+      window.__migratingPhotos = true;
+      try {
+        const conv = async (list) => {
+          let changed = false;
+          for (const it of list) {
+            if (!it || !Array.isArray(it.images)) continue;
+            for (let i = 0; i < it.images.length; i++) {
+              const im = it.images[i];
+              if (typeof im !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(im)) continue;
+              try {
+                const blob = await (await fetch(im)).blob();
+                const url = await uploadPhotoToCloud(blob);
+                if (url) { it.images[i] = url; changed = true; }
+              } catch (_) {}
+            }
+          }
+          return changed;
+        };
+        if (await conv(properties)) { safeSaveStorage('abuelhamd_properties', properties); try { handleSearchFilter(); } catch (_) {} }
+        if (await conv(pendingSubmissions)) { safeSaveStorage('abuelhamd_pending', pendingSubmissions); try { renderPendingSubmissions(); } catch (_) {} }
+      } finally { window.__migratingPhotos = false; }
     }
     async function cloudSubmitPending(item) {
       try {
