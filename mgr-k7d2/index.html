@@ -5281,8 +5281,8 @@ html.panel-home #panelBackBtn { display:none!important }
     });
   </script>
 
-<script src="citymap.js?v=1"></script>
-<script src="chat.js?v=7"></script>
+<script src="../citymap.js?v=1"></script>
+<script src="../chat.js?v=7"></script>
 <script src="admin-chats.js"></script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <script>
@@ -5610,13 +5610,14 @@ window.addEventListener('DOMContentLoaded', function(){
       const list = (typeof properties !== 'undefined' && properties) || [];
       const hid = list.filter(p => p.hidden).length, sold = list.filter(p => p.sold).length, opp = list.filter(p => typeof oppActive === 'function' && oppActive(p)).length;
       const pend = (document.getElementById('headerPendingCountBadge') || {}).textContent || '0';
+      const ac = window.__adminCounts || null;
       const c = document.getElementById('panelCounts');
-      if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات جديدة', pend]].map(x => '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>').join('');
+      if (c) c.innerHTML = [['عقارات', list.length], ['مخفية', hid], ['مباعة', sold], ['فرص شغالة', opp], ['طلبات عملاء مفتوحة', ac ? ac.openRequests : '...'], ['محادثات منتظرة رد', ac ? ac.waitingChats : '...'], ['طلبات عقارات واردة', pend]].map(x => '<span class="bg-navy-700 rounded-xl px-3 py-1.5">' + x[0] + ': <b class="text-gold-300">' + x[1] + '</b></span>').join('');
       const tiles = [
         ['fa-plus', 'إضافة عقار', "panelAct(openPropertyModal)", 'bg-emerald-600'],
         ['fa-list', 'كل العقارات', "panelGo('latest')", 'bg-navy-800'],
-        ['fa-inbox', 'طلبات العملاء', "panelGo('pending')", 'bg-amber-600'],
-        ['fa-comments', 'المحادثات', "panelGo('chats')", 'bg-teal-700'],
+        ['fa-inbox', 'عقارات واردة من العملاء (' + pend + ')', "panelGo('pending')", 'bg-amber-600'],
+        ['fa-comments', 'طلبات ومحادثات العملاء' + (ac ? ' (' + ac.openRequests + ' طلب • ' + ac.waitingChats + ' منتظر)' : ''), "panelGo('chats')", 'bg-teal-700'],
         ['fa-layer-group', 'الأقسام (إظهار/إخفاء/تسمية)', "panelAct(openSectionsManager)", 'bg-purple-700'],
         ['fa-newspaper', 'الأخبار', "panelGo('news')", 'bg-sky-700'],
         ['fa-shop', 'المولات', "panelAct(openMallsManager)", 'bg-navy-700'],
@@ -5631,6 +5632,8 @@ window.addEventListener('DOMContentLoaded', function(){
       if (st) st.innerHTML = ['lands', 'apartments', 'compounds', 'houses', 'malls', 'factories'].map(k => '<button type="button" onclick="panelGo(\'' + k + '\')" class="bg-white border border-slate-300 rounded-xl p-2 text-[11px] font-black text-navy-900 cursor-pointer' + (hiddenSections[k] ? ' opacity-50' : '') + '">' + getCategoryLabel(k) + (hiddenSections[k] ? ' (مخفي)' : '') + '</button>').join('');
     }
     setInterval(() => { if (document.documentElement.classList.contains('panel-home')) panelRender(); }, 5000);
+    setInterval(() => { if (window.adminCountOpen) window.adminCountOpen(); }, 45000);
+    window.addEventListener('load', () => setTimeout(() => { if (window.adminCountOpen) window.adminCountOpen(); }, 4000));
     window.addEventListener('load', () => { setTimeout(() => { applyLabelOverrides(); panelRender(); }, 1500); });
 </script>
 <script>
