@@ -5596,4 +5596,236 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
     window.addEventListener('load', () => setTimeout(pollUrgent, 2500));
     if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { pollUrgent(); });
 </script>
+<script>
+/* sections-v2: custom sections + sub-sections (stored inside abuelhamd_hidden_sections.__custom) */
+(function(){
+  if (window.__sec2) return; window.__sec2 = true;
+  var BUILTIN_SEL = ['lands','apartments','compounds','houses','malls','factories'];
+  var EXPANDED = {};
+  function H(){ if (typeof hiddenSections !== 'object' || !hiddenSections) hiddenSections = {}; return hiddenSections; }
+  function C(){ var h=H(); if(!h.__custom) h.__custom={v:1,order:[],sections:{},cat:{},deleted:{}}; var c=h.__custom; c.order=c.order||[]; c.sections=c.sections||{}; c.cat=c.cat||{}; c.deleted=c.deleted||{}; return c; }
+  function CR(){ var c=(H().__custom)||{}; return c; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function jq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+  function allKeys(){
+    var base = MANAGED_SECTIONS_META.map(function(s){return s.key}).filter(function(k){return BUILTIN_SEL.indexOf(k)>-1 || k==='citymap' || k==='landmarks' || k==='news';});
+    var c=CR(); var cust=Object.keys(c.sections||{});
+    var keys = base.concat(cust.filter(function(k){return base.indexOf(k)<0}));
+    var ord=(c.order||[]).filter(function(k){return keys.indexOf(k)>-1});
+    return ord.concat(keys.filter(function(k){return ord.indexOf(k)<0}));
+  }
+  function meta(k){
+    var m=MANAGED_SECTIONS_META.filter(function(s){return s.key===k})[0];
+    var cs=((CR().sections)||{})[k];
+    var lbl=((H().__labels)||{})[k] || (cs&&cs.label) || (m&&m.label) || k;
+    return {key:k,label:lbl,icon:(cs&&cs.icon)||(m&&m.icon)||'fa-folder',custom:!!cs};
+  }
+  function listingsIn(cat, sub){ return (typeof properties!=='undefined'?properties:[]).filter(function(p){return p.category===cat && (sub==null || p.subcategory===sub);}).length; }
+  function isDeleted(k){ return !!(CR().deleted||{})[k]; }
+
+  // ---- catalog / labels wrappers
+  var _gc = getCatalog;
+  getCatalog = function(){
+    var base=_gc(), out={}; Object.keys(base).forEach(function(k){out[k]=base[k];});
+    var c=CR();
+    Object.keys(c.sections||{}).forEach(function(k){ if(!out[k]) out[k]={}; });
+    Object.keys(c.cat||{}).forEach(function(k){ var o={}; (c.cat[k]||[]).forEach(function(g){o[g.n]=g.items||[];}); out[k]=o; });
+    (typeof properties!=='undefined'?properties:[]).forEach(function(p){
+      if(!p.category) return;
+      if(!out[p.category]) out[p.category]={};
+      if(p.subcategory && !(p.subcategory in out[p.category])) out[p.category][p.subcategory]=[];
+    });
+    return out;
+  };
+  var _gl = getCategoryLabel;
+  getCategoryLabel = function(c){ var cs=((CR().sections)||{})[c]; var lo=(H().__labels)||{}; return lo[c] || (cs&&cs.label) || _gl(c); };
+
+  // ---- groups helpers (copy-on-edit from base catalog)
+  function groups(k){
+    var c=C();
+    if(!c.cat[k]){
+      var base=_gc()[k]||{};
+      c.cat[k]=Object.keys(base).map(function(n){return {n:n,items:(base[n]||[]).slice()};});
+    }
+    return c.cat[k];
+  }
+
+  // ---- UI application (tabs, drawer, selects)
+  function mkTab(m){
+    var b=document.createElement('button'); b.type='button'; b.id='tab-'+m.key; b.setAttribute('data-section-key',m.key);
+    b.setAttribute('onclick',"switchTab('"+jq(m.key)+"')");
+    b.className='tab-btn section-managed-el sec2-el text-slate-300 hover:bg-navy-800 px-3 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition';
+    b.innerHTML='<i class="fa-solid '+esc(m.icon)+' text-gold-400"></i> '+esc(m.label);
+    return b;
+  }
+  function mkDrawer(m){
+    var b=document.createElement('button'); b.type='button'; b.setAttribute('data-section-key',m.key); b.setAttribute('data-sec2-d',m.key);
+    b.setAttribute('onclick',"selectSectionFromDrawer('"+jq(m.key)+"')");
+    b.className='section-managed-el sec2-el bg-navy-800 hover:bg-gold-500 hover:text-navy-950 text-white px-3 py-2.5 rounded-xl flex items-center gap-2 transition cursor-pointer';
+    b.innerHTML='<i class="fa-solid '+esc(m.icon)+' text-gold-400"></i> '+esc(m.label);
+    return b;
+  }
+  function applySections(){
+    var keys=allKeys(), c=CR();
+    var tabRef=document.getElementById('tab-latest');
+    var drawers={}; document.querySelectorAll('button[data-section-key][onclick^="selectSectionFromDrawer"]').forEach(function(b){drawers[b.getAttribute('data-section-key')]=b;});
+    var drRef=document.querySelector('button[onclick^="selectSectionFromDrawer(\'latest\')"]');
+    // remove custom UI for sections that no longer exist
+    document.querySelectorAll('.sec2-el').forEach(function(el){ var k=el.getAttribute('data-section-key'); if(!(c.sections||{})[k]) el.remove(); });
+    keys.forEach(function(k){
+      var m=meta(k), del=isDeleted(k);
+      var tb=document.getElementById('tab-'+k);
+      if(!tb && m.custom){ tb=mkTab(m); (tabRef?tabRef.parentNode:document.body).insertBefore(tb, tabRef?tabRef.nextSibling:null); }
+      var dr=drawers[k]; if(!dr && m.custom && drRef){ dr=mkDrawer(m); drRef.parentNode.insertBefore(dr, drRef.nextSibling); drawers[k]=dr; }
+      if(m.custom){ var ic=tb&&tb.querySelector('i'); if(tb) tb.innerHTML=(ic?ic.outerHTML+' ':'')+esc(m.label); var ic2=dr&&dr.querySelector('i'); if(dr) dr.innerHTML=(ic2?ic2.outerHTML+' ':'')+esc(m.label); }
+      if(tb){ tb.style.display = del ? 'none' : ''; }
+      if(dr){ dr.style.display = del ? 'none' : ''; }
+      if(BUILTIN_SEL.indexOf(k)>-1 || m.custom){ if(tb){ tabRef.parentNode.insertBefore(tb, tabRef.nextSibling); tabRef=tb; } if(dr){ drRef.parentNode.insertBefore(dr, drRef.nextSibling); drRef=dr; } }
+    });
+    // category selects
+    ['propCategory','clientCategory'].forEach(function(id){
+      var s=document.getElementById(id); if(!s) return; var cur=s.value;
+      var act=keys.filter(function(k){ return !isDeleted(k) && (BUILTIN_SEL.indexOf(k)>-1 || meta(k).custom); });
+      if(cur && act.indexOf(cur)<0) act.push(cur);
+      var html=act.map(function(k){ var lab=getCategoryLabel(k); return '<option value="'+esc(k)+'">'+esc(lab)+'</option>'; }).join('');
+      if(s.__sec2html!==html){ s.innerHTML=html; s.__sec2html=html; if(cur) s.value=cur; }
+    });
+  }
+  var _av = applySectionVisibilityUI;
+  applySectionVisibilityUI = function(){ try{applySections();}catch(e){console.warn('sec2',e);} return _av.apply(this,arguments); };
+
+  // ---- admin manager UI
+  function commit(msg, logText){
+    safeSaveStorage('abuelhamd_hidden_sections', H());
+    try{ logAdminAction(logText||msg, ''); }catch(_){}
+    applySections(); try{applySectionVisibilityUI();}catch(_){} try{handleSearchFilter();}catch(_){}
+    render(); showToast('جاري الحفظ في السحابة...');
+    cloudSaveVerified('abuelhamd_hidden_sections').then(function(v){
+      showSaveBanner(v.ok, v.ok ? 'تم الحفظ في السحابة ✓ — '+msg : '⚠ لم يُحفظ في السحابة — '+v.msg+' (التغيير لسه على الجهاز بس)');
+    });
+  }
+  var ICONS=['fa-folder','fa-building','fa-city','fa-house','fa-map-location-dot','fa-shop','fa-industry','fa-briefcase','fa-store','fa-hotel','fa-warehouse','fa-tree','fa-star','fa-handshake'];
+  function btn(cls,fn,txt,title){ return '<button type="button" onclick="'+fn+'" '+(title?'title="'+esc(title)+'" ':'')+'class="'+cls+' text-white text-[11px] font-black px-2 py-1 rounded-lg cursor-pointer">'+txt+'</button>'; }
+  function render(){
+    var box=document.getElementById('sectionsVisibilityList'); if(!box) return;
+    var keys=allKeys(), html='';
+    html+='<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-2.5 space-y-1.5"><div class="text-[11px] font-black text-indigo-900">➕ قسم جديد</div><div class="flex gap-1.5 flex-wrap"><input id="sec2NewName" placeholder="اسم القسم" class="px-2 py-1 border border-slate-300 rounded-lg text-xs font-bold flex-1 min-w-[8rem]"><select id="sec2NewIcon" class="px-1 py-1 border border-slate-300 rounded-lg text-xs">'+ICONS.map(function(i){return '<option value="'+i+'">'+i.replace('fa-','')+'</option>';}).join('')+'</select>'+btn('bg-indigo-600','window.__sec2.add()','إضافة القسم')+'</div></div>';
+    var delList=[];
+    keys.forEach(function(k,idx){
+      var m=meta(k), del=isDeleted(k);
+      if(del){ delList.push(m); return; }
+      var hid=!!H()[k], cat=(BUILTIN_SEL.indexOf(k)>-1||m.custom), n=cat?listingsIn(k):0;
+      html+='<div class="rounded-xl border '+(hid?'border-red-300 bg-red-50/50':'border-slate-200 bg-slate-50')+' p-2 space-y-1.5">';
+      html+='<div class="flex items-center gap-1.5 flex-wrap"><i class="fa-solid '+esc(m.icon)+' text-gold-600"></i><input id="sec2L-'+esc(k)+'" value="'+esc(m.label)+'" class="px-2 py-1 border border-slate-300 rounded-lg text-xs font-bold flex-1 min-w-[7rem]">'+btn('bg-sky-600',"window.__sec2.rename('"+jq(k)+"')",'حفظ الاسم')+'</div>';
+      html+='<div class="flex items-center gap-1.5 flex-wrap text-[10px] font-bold text-slate-600">'+(hid?'<span class="bg-red-600 text-white px-2 py-0.5 rounded-full">مخفي/مجمّد عن الجمهور</span>':'<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">ظاهر</span>')+(cat?'<span>'+n+' إعلان</span>':'')
+        +btn(hid?'bg-emerald-600':'bg-red-600',"toggleSectionVisibility('"+jq(k)+"')",hid?'إظهار':'إخفاء/تجميد')
+        +btn('bg-slate-500',"window.__sec2.move('"+jq(k)+"',-1)",'▲')+btn('bg-slate-500',"window.__sec2.move('"+jq(k)+"',1)",'▼')
+        +(cat?btn('bg-purple-600',"window.__sec2.toggleOpen('"+jq(k)+"')",(EXPANDED[k]?'إخفاء':'التصنيفات الفرعية')):'')
+        +(cat?btn('bg-rose-700',"window.__sec2.del('"+jq(k)+"')",'حذف القسم'):'')+'</div>';
+      if(cat && EXPANDED[k]) html+=renderGroups(k);
+      html+='</div>';
+    });
+    if(delList.length){ html+='<div class="rounded-xl border border-dashed border-slate-300 p-2 text-[11px] font-bold text-slate-600">أقسام محذوفة (إعلاناتها محفوظة، ينفع ترجعها):'+delList.map(function(m){return '<div class="flex items-center gap-2 mt-1"><span>'+esc(m.label)+' ('+listingsIn(m.key)+' إعلان)</span>'+btn('bg-emerald-600',"window.__sec2.restore('"+jq(m.key)+"')",'استرجاع')+'</div>';}).join('')+'</div>'; }
+    box.innerHTML=html; box.classList.remove('max-h-80'); box.style.maxHeight='68vh';
+  }
+  function renderGroups(k){
+    var g=(CR().cat&&CR().cat[k]) ? CR().cat[k] : Object.keys(_gc()[k]||{}).map(function(n){return {n:n,items:(_gc()[k][n]||[])};});
+    var ro = (k==='malls');
+    var h='<div class="bg-white rounded-lg border border-slate-200 p-1.5 space-y-1">';
+    if(ro) h+='<div class="text-[10px] text-amber-700 font-bold">قائمة المولات بتتعدل من «إدارة المولات»، والتصنيفات هنا بتتعدل برضه.</div>';
+    g.forEach(function(x,i){
+      var n=listingsIn(k,x.n), q="'"+jq(k)+"',"+i;
+      h+='<div class="flex items-center gap-1 flex-wrap border-b border-slate-100 pb-1"><input id="sec2G-'+esc(k)+'-'+i+'" value="'+esc(x.n)+'" class="px-1.5 py-0.5 border border-slate-300 rounded text-[11px] font-bold flex-1 min-w-[6rem]"><span class="text-[10px] text-slate-500">'+n+' إعلان</span>'
+        +btn('bg-sky-600',"window.__sec2.renameG("+q+")",'اسم')+btn('bg-slate-500',"window.__sec2.moveG("+q+",-1)",'▲')+btn('bg-slate-500',"window.__sec2.moveG("+q+",1)",'▼')
+        +btn('bg-purple-600',"window.__sec2.items("+q+")",'التفاصيل ('+(x.items||[]).length+')')+btn('bg-rose-700',"window.__sec2.delG("+q+")",'حذف')+'</div>';
+      if(EXPANDED[k+'#'+i]) h+='<div class="p-1"><textarea id="sec2I-'+esc(k)+'-'+i+'" rows="4" class="w-full border border-slate-300 rounded p-1 text-[11px]" placeholder="كل سطر = اسم مشروع/منطقة">'+esc((x.items||[]).join('\n'))+'</textarea>'+btn('bg-emerald-600',"window.__sec2.saveItems("+q+")",'حفظ التفاصيل')+'</div>';
+    });
+    h+='<div class="flex gap-1 pt-1"><input id="sec2GN-'+esc(k)+'" placeholder="تصنيف فرعي جديد" class="px-1.5 py-0.5 border border-slate-300 rounded text-[11px] font-bold flex-1">'+btn('bg-indigo-600',"window.__sec2.addG('"+jq(k)+"')",'إضافة تصنيف')+'</div></div>';
+    return h;
+  }
+  function val(id){ var e=document.getElementById(id); return e?String(e.value).trim():''; }
+  window.__sec2 = {
+    render: render, apply: applySections,
+    add: function(){
+      var n=val('sec2NewName'); if(!n){ showToast('اكتب اسم القسم'); return; }
+      var dup=allKeys().some(function(k){return meta(k).label===n}); if(dup && !confirm('فيه قسم بنفس الاسم. تضيف برضه؟')) return;
+      var c=C(), key='cx'+Date.now().toString(36);
+      c.sections[key]={label:n,icon:val('sec2NewIcon')||'fa-folder'}; c.cat[key]=[{n:'عام',items:[]}]; c.order=allKeys().filter(function(k){return k!==key}).concat([key]);
+      EXPANDED[key]=true; commit('اتضاف قسم «'+n+'» للكل','إضافة قسم جديد: '+n);
+    },
+    rename: function(k){ var v=val('sec2L-'+k); if(!v){ showToast('اكتب اسم القسم'); return; }
+      var c=C(); if(c.sections[k]) c.sections[k].label=v; else { var h=H(); if(!h.__labels) h.__labels={}; h.__labels[k]=v; }
+      try{ applyLabelOverrides(); }catch(_){} commit('الاسم اتغير للكل','تغيير اسم قسم: '+v); },
+    move: function(k,d){ var ks=allKeys(), i=ks.indexOf(k), j=i+d; if(j<0||j>=ks.length) return; ks.splice(i,1); ks.splice(j,0,k); C().order=ks; commit('الترتيب اتغير','ترتيب الأقسام'); },
+    toggleOpen: function(k){ EXPANDED[k]=!EXPANDED[k]; render(); },
+    del: function(k){ var m=meta(k), n=listingsIn(k);
+      var msg='حذف قسم «'+m.label+'»؟\n'+(n? '⚠ فيه '+n+' إعلان. الإعلانات مش هتتمسح أبدًا — بتفضل محفوظة وظاهرة في «أحدث العروض» وفي لوحة الإدارة، والقسم ينفع ترجعه من «أقسام محذوفة».' : 'القسم فاضي، وينفع ترجعه بعدين.');
+      if(!confirm(msg)) return; C().deleted[k]=true; commit('القسم «'+m.label+'» اتحذف (الإعلانات محفوظة)','حذف قسم (بدون مسح إعلانات): '+m.label); },
+    restore: function(k){ delete C().deleted[k]; commit('القسم اتسترجع','استرجاع قسم: '+meta(k).label); },
+    addG: function(k){ var n=val('sec2GN-'+k); if(!n){ showToast('اكتب اسم التصنيف'); return; } var g=groups(k); if(g.some(function(x){return x.n===n})){ showToast('التصنيف موجود'); return; } g.push({n:n,items:[]}); commit('اتضاف تصنيف «'+n+'»','إضافة تصنيف فرعي: '+n); },
+    renameG: function(k,i){ var g=groups(k), v=val('sec2G-'+k+'-'+i), old=g[i].n; if(!v||v===old) return;
+      if(g.some(function(x,j){return j!==i&&x.n===v})){ showToast('الاسم موجود'); return; }
+      var n=listingsIn(k,old);
+      if(n){ alert('التصنيف «'+old+'» فيه '+n+' إعلان. تغيير اسمه معناه تعديل الإعلانات دي، ومش هعمله من غير أمرك الصريح. الإعلانات لسه زي ما هي.'); return; }
+      g[i].n=v; commit('اسم التصنيف اتغير','تغيير اسم تصنيف فرعي: '+old+' ← '+v); },
+    moveG: function(k,i,d){ var g=groups(k), j=i+d; if(j<0||j>=g.length) return; var x=g.splice(i,1)[0]; g.splice(j,0,x); commit('ترتيب التصنيفات اتغير','ترتيب التصنيفات'); },
+    delG: function(k,i){ var g=groups(k), x=g[i], n=listingsIn(k,x.n);
+      if(n){ alert('التصنيف «'+x.n+'» فيه '+n+' إعلان. مش هتمسح إعلانات، فمش هحذف التصنيف دلوقتي. انقل الإعلانات أو قولّي أعمل إيه.'); return; }
+      if(!confirm('حذف التصنيف «'+x.n+'»؟ (فاضي)')) return; g.splice(i,1); commit('التصنيف اتحذف','حذف تصنيف فرعي: '+x.n); },
+    items: function(k,i){ groups(k); EXPANDED[k+'#'+i]=!EXPANDED[k+'#'+i]; render(); },
+    saveItems: function(k,i){ var g=groups(k); var t=document.getElementById('sec2I-'+k+'-'+i); if(!t) return; g[i].items=t.value.split('\n').map(function(s){return s.trim()}).filter(Boolean); commit('تفاصيل التصنيف اتحفظت','تعديل تفاصيل تصنيف: '+g[i].n); }
+  };
+  renderSectionsVisibilityList = render;
+  var _om = (typeof openSectionsManager==='function')?openSectionsManager:null; if(!_om) { try{ applySections(); }catch(e){} return; }
+  openSectionsManager = function(){ _om.apply(this,arguments); try{ var m=document.querySelector('#sectionsManagerModal > div'); if(m){ m.classList.remove('max-w-md'); m.classList.add('max-w-xl'); } render(); }catch(e){console.warn(e);} };
+  try{ applySections(); }catch(e){ console.warn('sec2 init',e); }
+})();
+
+</script>
+<script>
+/* watermark-v1: stamps every listing photo on display. Originals in storage/data are never changed. */
+(function(){
+  if (window.__wm) return; window.__wm = true;
+  var L1='سوهاج الجديدة', L2='إدارة أستاذ محمد علي أبو الحمد', L3='01112303616';
+  var cache={}, busy={};
+  function enabled(){ try{ return !(hiddenSections && hiddenSections.__wm === false); }catch(_){ return true; } }
+  function isPhoto(u){ return typeof u==='string' && /\/storage\/v1\/object\/public\//.test(u) && !/\/(icons?|assets|brand)\//.test(u); }
+  function stamp(src){
+    return new Promise(function(res){
+      if(cache[src]) return res(cache[src]);
+      fetch(src,{mode:'cors',cache:'force-cache'}).then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+        .then(function(b){ return createImageBitmap(b); })
+        .then(function(im){ try{
+        var w=im.width, h=im.height; if(!w||!h) return res(null);
+        var max=1600, k=Math.min(1,max/Math.max(w,h)); w=Math.round(w*k); h=Math.round(h*k);
+        var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'); x.drawImage(im,0,0,w,h);
+        var fs=Math.max(14,Math.round(Math.min(w,h)/17));
+        // faint diagonal repeat (hard to crop out)
+        x.save(); x.globalAlpha=.13; x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle'; x.font='900 '+Math.round(fs*1.1)+'px Tajawal,Cairo,Arial,sans-serif'; x.translate(w/2,h/2); x.rotate(-Math.PI/6);
+        for(var yy=-h; yy<=h; yy+=fs*4.2){ for(var xx=-w; xx<=w; xx+=fs*9){ x.fillText(L1,xx+((Math.round(yy/(fs*4.2))%2)?fs*4.5:0),yy); } }
+        x.restore();
+        // bottom band
+        var bh=Math.round(fs*3.7), by=Math.round(h*0.5-bh/2); x.fillStyle='rgba(8,18,40,.6)'; x.fillRect(0,by,w,bh);
+        x.textAlign='center'; x.textBaseline='middle'; x.direction='rtl'; x.shadowColor='rgba(0,0,0,.8)'; x.shadowBlur=4;
+        x.fillStyle='#f5c542'; x.font='900 '+fs+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L1,w/2,by+fs*.8);
+        x.fillStyle='#ffffff'; x.font='800 '+Math.round(fs*.8)+'px Tajawal,Cairo,Arial,sans-serif'; x.fillText(L2,w/2,by+fs*1.85);
+        x.fillStyle='#ffffff'; x.direction='ltr'; x.font='900 '+Math.round(fs*.85)+'px Arial,sans-serif'; x.fillText(L3,w/2,by+fs*2.95);
+        cache[src]=c.toDataURL('image/jpeg',.86); res(cache[src]);
+      }catch(e){ window.__wmerr=String(e); res(null); } })
+        .catch(function(e){ window.__wmerr='load '+String(e); res(null); });
+    });
+  }
+  function handle(img){
+    if(!enabled()) return; var s=img.getAttribute('src'); if(!isPhoto(s) || img.dataset.wmDone===s) return;
+    img.dataset.wmOrig=s; if(img.__wmBusy===s) return; img.__wmBusy=s;
+    setTimeout(function(){ stamp(s).then(function(u){ img.__wmBusy=null; if(u && img.getAttribute('src')===s){ img.dataset.wmDone=u; img.setAttribute('src',u); } }); },700);
+  }
+  function scan(root){ (root.querySelectorAll?root.querySelectorAll('img'):[]).forEach(handle); if(root.tagName==='IMG') handle(root); }
+  var mo=new MutationObserver(function(ms){ ms.forEach(function(m){ if(m.type==='attributes'){ var t=m.target; if(t.tagName==='IMG'){ var s=t.getAttribute('src'); if(t.dataset.wmDone===s) return; handle(t);} } else m.addedNodes.forEach(function(n){ if(n.nodeType===1) scan(n); }); }); });
+  mo.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});
+  scan(document);
+  window.__wm = { off:function(){ try{ hiddenSections.__wm=false; }catch(_){} }, on:function(){ try{ delete hiddenSections.__wm; }catch(_){} } };
+})();
+
+</script>
 </body></html>
