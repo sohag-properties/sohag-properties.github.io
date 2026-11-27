@@ -2572,7 +2572,7 @@
       if (raw === null) { cloudDirtyDel(key); return true; }
       const ts = new Date().toISOString();
       const tok = await cloudToken();
-      if (!tok && !cloudCanWrite(key)) { cloudDirtyDel(key); return true; }
+      if (!tok && !cloudCanWrite(key)) return true; // بدون جلسة: سيب العلم متعلّم، هيرفع بعد تسجيل الدخول
       const res = await fetch(SUPABASE_URL + '/rest/v1/app_kv', {
         method: 'POST',
         headers: cloudHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }, tok),
@@ -2601,7 +2601,12 @@
       if (cloudFlushAgain) { cloudFlushAgain = false; return cloudFlushAll(); }
     }
     function cloudPush(key, data) {
-      if (CLOUD_SYNC_KEYS.indexOf(key) === -1 || !cloudCanWrite(key)) return Promise.resolve();
+      if (CLOUD_SYNC_KEYS.indexOf(key) === -1) return Promise.resolve();
+      if (!cloudCanWrite(key)) {
+        const d = cloudDirtyGet(); if (d.indexOf(key) === -1) { d.push(key); cloudDirtySet(d); }
+        if (Date.now() - cloudFailToastAt > 60000) { cloudFailToastAt = Date.now(); try { showToast('⚠️ مش مسجل دخول السحابة — التعديل اتحفظ على جهازك بس وهيترفع أول ما تسجل دخول'); } catch (_) {} }
+        return Promise.resolve();
+      }
       cloudDirtyAdd(key);
       return cloudFlushAll();
     }
