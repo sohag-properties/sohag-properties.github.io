@@ -5361,17 +5361,16 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
         const budgetV = parseFloat(document.getElementById('alertBudget').value);
         const max_budget = (isFinite(budgetV) && budgetV > 0) ? Math.round(budgetV) : null;
         if (!category && !location && !max_budget) { showToast('حدد على الأقل نوع العقار أو المنطقة أو الميزانية'); return; }
-        const resp = await fetch(SUPABASE_URL + '/rest/v1/demand_alerts', {
+        const resp = await fetch(SUPABASE_URL + '/rest/v1/rpc/save_demand_alert', {
           method: 'POST',
-          headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ endpoint, category, location, max_budget })
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_endpoint: endpoint, p_category: category, p_location: location, p_max_budget: max_budget })
         });
         if (!resp.ok) { showToast('حصل خطأ أثناء الحفظ — جرّب تاني'); return; }
-        const rows = await resp.json();
-        const row = Array.isArray(rows) ? rows[0] : rows;
+        const newAlertId = await resp.json();
         try {
           const mine = JSON.parse(localStorage.getItem('abuelhamd_my_alerts') || '[]');
-          mine.push({ id: row.id, category, location, max_budget });
+          mine.push({ id: newAlertId, category, location, max_budget });
           localStorage.setItem('abuelhamd_my_alerts', JSON.stringify(mine));
           localStorage.setItem('abuelhamd_alert_endpoint', endpoint);
         } catch (_) {}
