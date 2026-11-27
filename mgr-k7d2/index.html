@@ -2951,13 +2951,54 @@
       });
     }
 
+    function compressImageBlob(file) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 1200;
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(b => resolve(b), 'image/jpeg', 0.78);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      });
+    }
+
+    async function uploadPhotoToCloud(blob) {
+      const tok = await cloudToken();
+      if (!tok || !blob) return null;
+      const name = 'p-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+      const r = await fetch(SUPABASE_URL + '/storage/v1/object/photos/' + name, { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: blob });
+      if (!r.ok) return null;
+      return SUPABASE_URL + '/storage/v1/object/public/photos/' + name;
+    }
+
     async function handleAdminImageUpload(e) {
-      const files = Array.from(e.target.files || []).slice(0, 5);
-      for (const f of files) {
-        const compressed = await compressImageFile(f);
-        tempAdminImages.push(compressed);
+      const MAX_PHOTOS = 4;
+      const files = Array.from(e.target.files || []);
+      const room = MAX_PHOTOS - tempAdminImages.length;
+      if (room <= 0) { showToast('الحد الأقصى ' + MAX_PHOTOS + ' صور للعرض — احذف صورة الأول'); e.target.value = ''; return; }
+      if (files.length > room) showToast('هنضيف أول ' + room + ' صور بس (الحد الأقصى ' + MAX_PHOTOS + ')');
+      for (const f of files.slice(0, room)) {
+        let added = false;
+        try {
+          const blob = await compressImageBlob(f);
+          const url = await uploadPhotoToCloud(blob);
+          if (url) { tempAdminImages.push(url); added = true; }
+        } catch (_) {}
+        if (!added) {
+          showToast('تعذر رفع الصورة للسحابة — اتحفظت على الجهاز مؤقتًا');
+          tempAdminImages.push(await compressImageFile(f));
+        }
+        renderAdminImagesPreview();
       }
-      renderAdminImagesPreview();
+      e.target.value = '';
     }
 
     function normalizeExternalImageUrl(rawUrl) {
@@ -2981,6 +3022,7 @@
         showToast('يرجى إدخال رابط صورة صحيح');
         return;
       }
+      if (tempAdminImages.length >= 4) { showToast('الحد الأقصى 4 صور للعرض'); return; }
       tempAdminImages.push(normalized);
       input.value = '';
       renderAdminImagesPreview();
