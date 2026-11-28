@@ -4703,6 +4703,7 @@ setTimeout(done,SPLASH_MS);el.addEventListener('click',done);})();</script>
           <div class="text-xs font-bold text-slate-700">المالك والهاتف: <span class="text-red-700 font-black">${sub.ownerPhone}</span></div>
           <div class="text-xs font-bold text-emerald-700">السعر المطلوب: ${Number(sub.totalPrice).toLocaleString('ar-EG')} ج.م • المساحة: ${sub.area} م²</div>
           <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">${sub.notes}</p>
+          ${window.pendDetailsAr ? pendDetailsAr(sub) : ''}
           ${sub.hold ? `<div class="text-xs font-black text-amber-800 bg-amber-50 border border-amber-300 rounded-xl p-2.5">⏸️ موقوف — بانتظار بيانات من المالك${sub.holdReason ? ': ' + sub.holdReason : ''}</div>` : ''}
           <div class="flex flex-wrap gap-2 pt-2">
             ${sub.hold
@@ -6038,6 +6039,7 @@ if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
 <script src="updategate.js?v=1"></script>
 <script src="views.js?v=1"></script>
 <script src="companies.js?v=9"></script>
+<script src="adminar.js?v=1"></script>
 <script src="numhint.js?v=1"></script>
 <script src="wholesale.js?v=9"></script>
 </body></html>
