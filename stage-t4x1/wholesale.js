@@ -20,6 +20,9 @@
       return (admin ? rpc('admin_wholesale_list', {}, tok) : rpc('wholesale_public')).then(function (l) { D = l; draw(); });
     }).catch(function () { shell('<div style="' + C + '">تعذر التحميل. حاول تاني</div>'); });
   };
+  /* معادلة المتبقي: غيّرها هنا (للمعاينة في النموذج) وفي دالة _ws_remaining في قاعدة البيانات (للعرض) */
+  function REMAIN(total, down, paid) { return Math.max(total - (down + paid), 0); }
+  function PAIDTOTAL(down, paid, over) { return down + paid + over; }
   var ED = []; /* صور التعديل الحالي */
   function shrink(file) { return new Promise(function (res) { var r = new FileReader(); r.onload = function () { var im = new Image(); im.onload = function () { var k = Math.min(1, 900 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.72).split(',')[1]); }; im.onerror = function () { res(null); }; im.src = r.result; }; r.onerror = function () { res(null); }; r.readAsDataURL(file); }); }
   function embed(u) { u = (u || '').trim(); if (!u) return ''; var m;
@@ -36,9 +39,12 @@
     var shop = it.kind === 'shop', rows = [];
     rows.push(['المساحة', Number(it.area) + ' م²']);
     if (shop) rows.push(['النشاط', it.activity || '-']); else { rows.push(['الوصف', it.description || '-']); rows.push(['التشطيب', it.finished ? 'متشطبة' : 'غير متشطبة']); }
+    if (shop && it.inst) rows.push(['سعر المتر', money(it.ppm)]);
     var h = '<div style="' + C + '">' + ((it.images || []).length ? '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px">' + it.images.map(function (b, i) { return '<img onclick="wsZoom(' + it.id + ',' + i + ')" src="data:image/jpeg;base64,' + b + '" style="height:150px;border-radius:10px;flex:none;cursor:pointer">'; }).join('') + '</div>' : '') + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-weight:900;font-size:16px">' + (shop ? 'محل رقم ' : 'تلاجة رقم ') + esc(it.num) + '</div>' + (it.sample ? '<span style="background:#7c2d12;color:#fed7aa;font-size:11px;font-weight:800;border-radius:8px;padding:3px 8px">نموذج تجريبي</span>' : '') + '</div>';
     rows.forEach(function (r) { h += '<div style="display:flex;justify-content:space-between;font-size:14px;padding:4px 0;border-bottom:1px solid #ffffff14"><span style="color:#94a3b8">' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; });
-    h += '<div style="margin-top:10px;font-size:20px;font-weight:900;color:#e6c36a">' + money(it.price) + '</div>';
+    var inst = '';
+    if (shop && it.inst) inst = '<div style="margin-top:8px;font-size:14px"><div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#94a3b8">المدفوع (مقدم + أقساط' + (admin && it.over ? ' + أوفر' : '') + ')</span><b>' + money(it.paid_total) + '</b></div><div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:#94a3b8">المتبقي</span><b>' + money(it.remaining) + '</b></div></div>';
+    h += inst + '<div style="margin-top:10px;font-size:20px;font-weight:900;color:#e6c36a">' + money(it.price) + (shop && it.inst ? ' <span style="font-size:12px;color:#cbd5e1;font-weight:700">إجمالي</span>' : '') + '</div>';
     h += '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a href="https://wa.me/2' + PHONE + '?text=' + encodeURIComponent('أنا مهتم بـ' + (shop ? 'المحل رقم ' : 'التلاجة رقم ') + it.num + ' في سوق الجملة') + '" target="_blank" style="' + B + '">واتساب</a><a href="tel:' + PHONE + '" style="' + B2 + '">اتصال</a>';
     if (it.video) h += '<button onclick="wsVid(' + it.id + ')" style="' + B2 + '">▶ فيديو</button>';
     if (admin) h += '<button onclick="wsEdit(' + it.id + ')" style="' + B2 + '">تعديل</button><button onclick="wsDel(' + it.id + ')" style="' + B2 + ';color:#fca5a5">حذف</button>';
@@ -57,19 +63,24 @@
     function f(l, i, v, t, ph) { return '<label style="font-size:13px;color:#cbd5e1">' + l + '</label><input id="' + i + '" type="' + (t || 'text') + '" inputmode="' + (t === 'number' ? 'decimal' : 'text') + '" value="' + esc(v == null ? '' : v) + '" placeholder="' + (ph || '') + '" style="' + IN + '">'; }
     var h = '<div style="' + C + '"><div style="font-weight:900;margin-bottom:8px">' + (id ? 'تعديل' : 'إضافة') + ' ' + (shop ? 'محل' : 'تلاجة') + '</div>' + f(shop ? 'رقم المحل' : 'رقم التلاجة', 'wsNum', it.num) + f('المساحة (م²)', 'wsArea', it.area, 'number');
     if (shop) h += f('النشاط', 'wsAct', it.activity, 'text', 'مثال: خضار وفاكهة');
+    var ins = shop && it.inst;
+    if (shop) h += '<label style="font-size:13px;color:#cbd5e1">طريقة الدفع</label><select id="wsPay" onchange="wsPayChg()" style="' + IN + '"><option value="0"' + (ins ? '' : ' selected') + '>كاش</option><option value="1"' + (ins ? ' selected' : '') + '>تقسيط</option></select><div id="wsInst" style="display:' + (ins ? 'block' : 'none') + '">' + f('سعر المتر (ج.م)', 'wsPpm', it.ppm, 'number') + f('المقدم المدفوع (ج.م)', 'wsDown', it.down, 'number') + f('الأقساط المدفوعة (ج.م)', 'wsPaid', it.paid, 'number') + f('الأوفر (اختياري، للإدارة فقط ومحسوب في المدفوع)', 'wsOver', it.over, 'number') + '<div id="wsCalc" style="background:#0b1626;border-radius:10px;padding:10px;font-size:13px;margin-bottom:8px;color:#e6c36a"></div></div>';
     else h += f('الوصف', 'wsDesc', it.description) + '<label style="font-size:13px;color:#cbd5e1">التشطيب</label><select id="wsFin" style="' + IN + '"><option value="1"' + (it.finished !== false ? ' selected' : '') + '>متشطبة</option><option value="0"' + (it.finished === false ? ' selected' : '') + '>غير متشطبة</option></select>';
-    h += f('السعر المطلوب (ج.م)', 'wsPrice', it.price, 'number') + f('رابط فيديو (يوتيوب / تيك توك / فيسبوك / درايف / mp4)', 'wsVideo', it.video, 'url') + '<label style="font-size:13px;color:#cbd5e1">الصور (لحد 6)</label><div id="wsImgs" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div><input id="wsFile" type="file" accept="image/*" multiple onchange="wsPick(this)" style="' + IN + '">' + '<div id="wsErr" style="color:#fca5a5;font-size:13px;min-height:16px"></div><div style="display:flex;gap:8px"><button onclick="wsSave()" style="' + B + ';flex:1">حفظ</button><button onclick="draw_ws()" style="' + B2 + '">رجوع</button></div></div>';
-    shell(h); imgs();
+    h += '<div id="wsPriceBox" style="display:' + (ins ? 'none' : 'block') + '">' + f('السعر المطلوب (ج.م)', 'wsPrice', it.price, 'number') + '</div>' + f('رابط فيديو (يوتيوب / تيك توك / فيسبوك / درايف / mp4)', 'wsVideo', it.video, 'url') + '<label style="font-size:13px;color:#cbd5e1">الصور (لحد 6)</label><div id="wsImgs" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div><input id="wsFile" type="file" accept="image/*" multiple onchange="wsPick(this)" style="' + IN + '">' + '<div id="wsErr" style="color:#fca5a5;font-size:13px;min-height:16px"></div><div style="display:flex;gap:8px"><button onclick="wsSave()" style="' + B + ';flex:1">حفظ</button><button onclick="draw_ws()" style="' + B2 + '">رجوع</button></div></div>';
+    shell(h); imgs(); ['wsArea', 'wsPpm', 'wsDown', 'wsPaid', 'wsOver'].forEach(function (i) { var e = document.getElementById(i); if (e) e.oninput = calc; }); calc();
   };
+  function nv(i) { var x = parseFloat(v(i)); return x > 0 ? x : 0; }
+  function calc() { var e = document.getElementById('wsCalc'); if (!e) return; var t = Math.round(nv('wsPpm') * nv('wsArea')); e.innerHTML = 'الإجمالي: ' + money(t) + '<br>المدفوع: ' + money(PAIDTOTAL(nv('wsDown'), nv('wsPaid'), nv('wsOver'))) + '<br>المتبقي: ' + money(REMAIN(t, nv('wsDown'), nv('wsPaid'))); }
+  window.wsPayChg = function () { var on = v('wsPay') === '1'; document.getElementById('wsInst').style.display = on ? 'block' : 'none'; document.getElementById('wsPriceBox').style.display = on ? 'none' : 'block'; calc(); };
   function imgs() { var e = document.getElementById('wsImgs'); if (e) e.innerHTML = ED.map(function (b, i) { return '<div style="position:relative"><img src="data:image/jpeg;base64,' + b + '" style="width:72px;height:72px;object-fit:cover;border-radius:8px"><button onclick="wsRm(' + i + ')" style="position:absolute;top:-6px;left:-6px;background:#b91c1c;color:#fff;border:0;border-radius:50%;width:22px;height:22px">×</button></div>'; }).join(''); }
   window.wsRm = function (i) { ED.splice(i, 1); imgs(); };
   window.wsPick = function (inp) { var fs = Array.prototype.slice.call(inp.files || []).slice(0, 6 - ED.length); Promise.all(fs.map(shrink)).then(function (r) { r.forEach(function (b) { if (b) ED.push(b); }); imgs(); inp.value = ''; }); };
   window.draw_ws = draw;
   function v(i) { var e = document.getElementById(i); return e ? e.value.trim() : ''; }
   window.wsSave = function () {
-    var shop = edit.kind === 'shop', n = v('wsNum'), a = parseFloat(v('wsArea')), p = parseFloat(v('wsPrice')), err = document.getElementById('wsErr');
-    if (!n || !(a > 0) || !(p > 0)) { err.textContent = 'الرقم والمساحة والسعر لازم يتكتبوا'; return; }
-    rpc('admin_wholesale_save', { p_id: edit.id || null, p_kind: edit.kind, p_num: n, p_area: a, p_activity: shop ? v('wsAct') : null, p_description: shop ? null : v('wsDesc'), p_finished: shop ? null : v('wsFin') === '1', p_price: p, p_images: ED, p_video: v('wsVideo') || null }, tok)
+    var shop = edit.kind === 'shop', n = v('wsNum'), a = parseFloat(v('wsArea')), inst = shop && v('wsPay') === '1', p = inst ? Math.round(nv('wsPpm') * a) : parseFloat(v('wsPrice')), err = document.getElementById('wsErr');
+    if (!n || !(a > 0) || !(p > 0)) { err.textContent = inst ? 'الرقم والمساحة وسعر المتر لازم يتكتبوا' : 'الرقم والمساحة والسعر لازم يتكتبوا'; return; }
+    rpc('admin_wholesale_save', { p_id: edit.id || null, p_kind: edit.kind, p_num: n, p_area: a, p_activity: shop ? v('wsAct') : null, p_description: shop ? null : v('wsDesc'), p_finished: shop ? null : v('wsFin') === '1', p_price: p, p_images: ED, p_video: v('wsVideo') || null, p_ppm: inst ? nv('wsPpm') : null, p_down: inst ? nv('wsDown') : null, p_paid: inst ? nv('wsPaid') : null, p_over: inst && nv('wsOver') ? nv('wsOver') : null }, tok)
       .then(function () { return rpc('admin_wholesale_list', {}, tok); }).then(function (l) { D = l; edit = null; draw(); })
       .catch(function () { err.textContent = 'تعذر الحفظ. اتأكد إنك داخل بحساب الإدارة'; });
   };
