@@ -306,7 +306,7 @@
     }
 
     /* أسئلة تحميل التطبيق */
-    if (/(حمل|تحميل|نزل|تنزيل|انزل|ثبت|تثبيت|download|install|اب ستور|بلاي ستور|play store|app store|appstore)/.test(t) && /(تطبيق|ابلكيش|برنامج|app|ستور|store|ايفون|iphone|اندرويد|android|ابل)/.test(t) || (/(تطبيق|ابلكيش)/.test(t) && /(ايفون|iphone|اندرويد|android|ابل|ios)/.test(t))) {
+    if (/(حمل|تحميل|نزل|تنزيل|انزل|ثبت|تثبيت|download|install|اب ستور|بلاي ستور|play store|app store|appstore)/.test(t) && /(تطبيق|ابلكيش|برنامج|app|ستور|store|ايفون|iphone|اندرويد|android|ابل)/.test(t) || /(تطبيق|ابلكيش)/.test(t)) {
       setUnclear(0); out.needsAgent = false;
       var ios = /(ايفون|iphone|ابل|ios|ايباد|ipad)/.test(t), andr = /(اندرويد|android|سامسونج|اوبو|شاومي)/.test(t);
       var LINK = 'https://sohag-properties.github.io/go/';
