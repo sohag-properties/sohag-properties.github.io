@@ -4607,6 +4607,8 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
         if (ph.length < 10) bad.push('اكتب رقم موبايل صحيح للتواصل');
         if (String(o.notes || '').trim().length < 10) bad.push('اكتب وصف واضح للعقار (تفاصيل الموقع والحالة والتشطيب)');
       }
+      if (!isClient && String(o.ownerPhone || '').replace(/\D/g, '').length < 10) bad.push('اكتب رقم موبايل المالك (١٠ أرقام على الأقل)');
+      { const _d = (o.apartmentPaymentDelivery || o.compoundDetails || {}), _dp = Number(_d.downPayment) || 0; if (Number(o.totalPrice) > 0 && _dp > Number(o.totalPrice)) bad.push('السعر أقل من المقدم المدفوع، راجع الأرقام'); }
       const apd = o.apartmentPaymentDelivery;
       if (apd && apd.payMode === 'installments' && !(Number(apd.years) > 0)) bad.push('استكمل بيانات التقسيط (المدة بالسنوات)');
       const cd = o.compoundDetails;
@@ -5414,7 +5416,7 @@ html.panel-home header nav, html.panel-home #flexMenuDrawer, #pushBanner { displ
 <script src="../citymap.js?v=1"></script>
 <script src="../chat.js?v=10"></script>
 <script src="admin-chats.js"></script>
-<script src="adminar.js?v=1"></script>
+<script src="adminar.js?v=2"></script>
 <script src="premium-admin.js?v=6"></script>
 <script src="premium.js?v=3"></script>
 <script src="companies.js?v=1"></script>
