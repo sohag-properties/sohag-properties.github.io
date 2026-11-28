@@ -305,6 +305,18 @@
       return out;
     }
 
+    /* أسئلة تحميل التطبيق */
+    if (/(حمل|تحميل|نزل|تنزيل|انزل|ثبت|تثبيت|download|install|اب ستور|بلاي ستور|play store|app store|appstore)/.test(t) && /(تطبيق|ابلكيش|برنامج|app|ستور|store|ايفون|iphone|اندرويد|android|ابل)/.test(t) || /(تطبيق|ابلكيش)/.test(t)) {
+      setUnclear(0); out.needsAgent = false;
+      var ios = /(ايفون|iphone|ابل|ios|ايباد|ipad)/.test(t), andr = /(اندرويد|android|سامسونج|اوبو|شاومي)/.test(t);
+      var LINK = 'https://sohag-properties.github.io/go/';
+      var head = 'الخدمة شغالة من الموقع على المتصفح، ولسه مفيش تطبيق منفصل على متجر آيفون أو أندرويد 🙌 بس تقدر تثبته على موبايلك زي أي تطبيق وبيفتح بأيقونة.\n';
+      var IOS = 'على الآيفون: افتح الرابط في Safari ← دوس زرار المشاركة (Share) ← "إضافة إلى الشاشة الرئيسية" (Add to Home Screen).';
+      var AND = 'على الأندرويد: افتح الرابط في Chrome ← قايمة المتصفح (النقط التلاتة) ← "إضافة إلى الشاشة الرئيسية" أو "تثبيت التطبيق" (Install).';
+      out.text = head + (ios && !andr ? IOS : andr && !ios ? AND : IOS + '\n' + AND) + '\nالرابط: ' + LINK;
+      return out;
+    }
+
     var st = smallTalk(t);
     if (st) { setUnclear(0); out.text = st; return out; }
 
