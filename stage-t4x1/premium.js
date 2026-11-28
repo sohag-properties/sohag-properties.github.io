@@ -6,7 +6,7 @@
   var SHOW_PLANS = false; /* visitors: login + «قريبا» only; set true to show plans & subscribe request again */
   var tok = null, me = null, offset = 0, timer = null;
   function dev() { var d = localStorage.getItem('prem_dev'); if (!d || d.length < 16) { d = 'd' + Array.from(crypto.getRandomValues(new Uint8Array(20))).map(function (b) { return b.toString(16).padStart(2, '0'); }).join(''); localStorage.setItem('prem_dev', d); } return d; }
-  function rpc(fn, args) {
+  function rpc(fn, args) { if (/^prem_(templates_list|template_get|request_create|requests_mine|pay_request)$/.test(fn)) return Promise.reject(new Error('غير متاح في نسخة التجربة'));
     return fetch(URL_ + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) { var m = (d && d.message) || ''; var k = Object.keys(ERR).filter(function (x) { return m.indexOf(x) >= 0; })[0]; var e = new Error(k ? ERR[k] : 'حصل خطأ. حاول تاني'); e.code = k; throw e; } return d; }); });
   }
